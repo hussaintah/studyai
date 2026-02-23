@@ -290,7 +290,7 @@ export default function QuestionEngine() {
                     <p style={{ fontSize: 12, color: 'var(--cyan)', fontStyle: 'italic' }}>💡 {evaluations[q.id].improvement_tip}</p>
                   )}
                   <div style={{ marginTop: 10, padding: '10px 12px', background: 'var(--surface2)', borderRadius: 6 }}>
-                    <p style={{ fontSize: 11, color: 'var(--text2)', marginBottom: 3', fontWeight: 600 }}>Correct Answer:</p>
+                    <p style={{ fontSize: 11, color: 'var(--text2)', marginBottom: 3, fontWeight: 600 }}>Correct Answer:</p>
                     <p style={{ fontSize: 13, color: 'var(--emerald)' }}>{q.correct_answer}</p>
                   </div>
 
