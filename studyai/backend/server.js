@@ -9,6 +9,7 @@ const uploadRoutes = require('./routes/upload');
 const examRoutes = require('./routes/exam');
 
 const app = express();
+app.set('trust proxy', 1);
 app.use(cors({ origin: '*' }));
 app.use(express.json({ limit: '20mb' }));
 
