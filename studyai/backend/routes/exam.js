@@ -1,103 +1,117 @@
 const express = require('express');
 const router = express.Router();
 const Groq = require('groq-sdk');
-const { createClient } = require('@supabase/supabase-js');
-
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
-const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
 const MODEL = 'llama-3.3-70b-versatile';
 
-// Generate a full exam from content
+// Generate exam - with syllabus weighting, modules, numerical questions, tricky questions
 router.post('/generate', async (req, res) => {
-  const { content, duration, questionCount, difficulty } = req.body;
+  const { content, syllabus, questionCount, duration, difficulty, modules } = req.body;
 
-  const prompt = `You are creating a realistic exam paper for a student. This should feel like an actual test.
+  const syllabusSection = syllabus
+    ? `\nSYLLABUS / WEIGHTAGE GUIDE:\n${syllabus.slice(0, 3000)}\nUse this syllabus to determine how many questions each module/unit should get. Higher weightage modules get more questions.`
+    : '';
+
+  const modulesSection = modules && modules.length > 0
+    ? `\nFOCUS MODULES: Generate questions specifically covering these modules: ${modules.join(', ')}`
+    : '';
+
+  const questionMix = `
+QUESTION TYPE DISTRIBUTION (${questionCount} total):
+- ${Math.round(questionCount * 0.30)} Multiple Choice (MCQ) — 4 options, one clearly correct but with plausible distractors
+- ${Math.round(questionCount * 0.25)} Short Answer — require specific technical knowledge, not vague answers
+- ${Math.round(questionCount * 0.20)} True/False — non-obvious statements, include common misconceptions as false options
+- ${Math.round(questionCount * 0.25)} Numerical/Calculation — problems requiring computation, formulas, or quantitative reasoning
+
+CRITICAL — QUESTION QUALITY RULES:
+1. MCQ distractors must be plausible — common mistakes, off-by-one errors, related but wrong concepts
+2. True/False must NOT be trivially obvious — test common misconceptions
+3. Short answers must require specific facts, not general waffle
+4. Numerical questions MUST have actual numbers to calculate, with units where applicable
+5. Every question should make a student think twice — no giveaways
+6. Difficulty: ${difficulty}. For 'hard', add multi-step reasoning and edge cases.`;
+
+  const prompt = `You are a university professor creating a rigorous examination paper.
 
 STUDY MATERIAL:
 ${content.slice(0, 7000)}
+${syllabusSection}
+${modulesSection}
 
-Create a ${questionCount || 10}-question exam at ${difficulty || 'medium'} difficulty.
-Mix question types naturally like a real exam:
-- ~40% Multiple choice (4 options A/B/C/D)
-- ~40% Short answer  
-- ~20% True/False
+${questionMix}
 
-Make questions that genuinely test understanding, not just memorization. Include a range of topics from the material.
-
-Return ONLY a valid JSON array:
+Return ONLY a valid JSON array with no markdown:
 [
   {
     "id": 1,
-    "type": "mcq" | "short" | "truefalse",
-    "question": "question text",
+    "type": "mcq" | "short" | "truefalse" | "numerical",
+    "question": "question text (for numerical, include all given values and what to find)",
     "options": ["A. ...", "B. ...", "C. ...", "D. ..."],
-    "correct_answer": "correct answer",
-    "explanation": "why this is correct",
-    "topic": "concept being tested",
-    "marks": <1 for tf/mcq, 2-3 for short>,
-    "difficulty": "easy|medium|hard"
+    "correct_answer": "full correct answer with working for numerical",
+    "explanation": "detailed explanation of why this is correct and why distractors are wrong",
+    "difficulty": "easy|medium|hard",
+    "topic": "specific concept being tested",
+    "module": "module/unit name if applicable",
+    "marks": 1-4,
+    "hint": "optional hint for numerical questions only"
   }
-]`;
+]
+
+For numerical questions: marks should be 3-4. For short answer: 2-3. For MCQ/TF: 1-2.`;
 
   try {
     const completion = await groq.chat.completions.create({
       model: MODEL,
       messages: [{ role: 'user', content: prompt }],
-      max_tokens: 5000,
-      temperature: 0.3,
+      max_tokens: 6000,
+      temperature: 0.4,
     });
-
     let raw = completion.choices[0]?.message?.content || '[]';
     raw = raw.replace(/```json|```/g, '').trim();
     const questions = JSON.parse(raw);
-
     const totalMarks = questions.reduce((a, q) => a + (q.marks || 1), 0);
-
-    res.json({
-      questions,
-      totalMarks,
-      duration: duration || Math.max(15, questions.length * 2),
-      generatedAt: new Date().toISOString()
-    });
+    res.json({ questions, totalMarks, duration: duration || 60, generatedAt: new Date().toISOString() });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Failed to generate exam' });
   }
 });
 
-// Grade a completed exam
+// Grade exam
 router.post('/grade', async (req, res) => {
   const { questions, answers } = req.body;
-  // answers = { questionId: "student answer" }
 
-  const prompt = `Grade this completed exam. Evaluate each answer carefully.
+  const prompt = `Grade this completed university exam. Be strict but fair.
 
-EXAM ANSWERS TO GRADE:
+EXAM ANSWERS:
 ${questions.map(q => `
-Q${q.id} [${q.topic}] [${q.marks} marks]: ${q.question}
+Q${q.id} [${q.type}] [${q.topic}] [${q.marks} marks]: ${q.question}
 Correct: ${q.correct_answer}
 Student answered: ${answers[q.id] || '(no answer)'}
 `).join('\n')}
 
-Grade each question. Return ONLY valid JSON:
+For numerical questions: award partial marks if the method is correct but arithmetic is wrong.
+For short answers: award partial marks for partially correct responses.
+
+Return ONLY valid JSON:
 {
   "results": [
     {
       "id": <question id>,
       "marks_awarded": <number>,
       "max_marks": <number>,
-      "is_correct": <boolean>,
-      "feedback": "brief specific feedback on this answer",
+      "is_correct": <boolean — true if marks_awarded >= max_marks * 0.7>,
+      "feedback": "specific feedback mentioning what was right/wrong",
       "topic": "topic name"
     }
   ],
-  "total_marks": <sum of marks_awarded>,
+  "total_marks": <sum>,
   "max_marks": <sum of all max_marks>,
   "percentage": <0-100>,
-  "grade": "A|B|C|D|F",
-  "overall_feedback": "2-3 sentences summarizing exam performance",
+  "grade": "A+|A|B|C|D|F",
+  "overall_feedback": "2-3 sentence honest assessment",
   "topic_breakdown": [
-    { "topic": "topic name", "correct": <bool>, "marks": <marks awarded> }
+    { "topic": "topic", "correct": <bool>, "marks": <marks awarded> }
   ]
 }`;
 
@@ -105,7 +119,7 @@ Grade each question. Return ONLY valid JSON:
     const completion = await groq.chat.completions.create({
       model: MODEL,
       messages: [{ role: 'user', content: prompt }],
-      max_tokens: 2000,
+      max_tokens: 2500,
       temperature: 0.1,
     });
     let raw = completion.choices[0]?.message?.content || '{}';
