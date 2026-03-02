@@ -29,6 +29,9 @@ export default function ExamSimulator() {
   const [grading, setGrading] = useState(null);
   const [currentQ, setCurrentQ] = useState(0);
   const [showSyllabusInput, setShowSyllabusInput] = useState(false);
+  const [enabledTypes, setEnabledTypes] = useState(['short', 'numerical', 'mcq', 'truefalse']);
+
+  const toggleType = (id) => setEnabledTypes(prev => prev.includes(id) ? prev.length > 1 ? prev.filter(t => t !== id) : prev : [...prev, id]);
   const timerRef = useRef(null);
 
   useEffect(() => {
@@ -50,7 +53,7 @@ export default function ExamSimulator() {
       const moduleList = modules.trim() ? modules.split(',').map(m => m.trim()).filter(Boolean) : [];
       const res = await fetch(`${API_URL}/api/exam/generate`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ content, syllabus, questionCount, duration, difficulty, modules: moduleList })
+        body: JSON.stringify({ content, syllabus, questionCount, duration, difficulty, modules: moduleList, enabledTypes })
       });
       const data = await res.json();
       if (!data.questions) throw new Error('No questions');
@@ -138,6 +141,38 @@ export default function ExamSimulator() {
               value={modules}
               onChange={e => setModules(e.target.value)}
             />
+          </div>
+
+
+          {/* Question type toggles */}
+          <div className="card mb-16">
+            <div className="flex items-center justify-between mb-12">
+              <div>
+                <p style={{ fontFamily:'Syne', fontWeight:700, fontSize:15, marginBottom:2 }}>🎛️ Question Types</p>
+                <p className="text-muted" style={{ fontSize:12 }}>Toggle which question types to include in the exam</p>
+              </div>
+              <p style={{ fontSize:11, color:'var(--text3)' }}>{enabledTypes.length} selected</p>
+            </div>
+            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8 }}>
+              {[
+                { id:'short', label:'Short Answer', icon:'✍️', desc:'Written response' },
+                { id:'numerical', label:'Numerical', icon:'🔢', desc:'Calculation problems' },
+                { id:'mcq', label:'Multiple Choice', icon:'🔘', desc:'4-option questions' },
+                { id:'truefalse', label:'True / False', icon:'⚖️', desc:'Statement verification' },
+              ].map(t => {
+                const on = enabledTypes.includes(t.id);
+                return (
+                  <button key={t.id} onClick={() => toggleType(t.id)} style={{ padding:'11px 13px', borderRadius:'var(--radius-sm)', border:'2px solid', cursor:'pointer', textAlign:'left', transition:'all 0.15s', fontFamily:'Outfit', borderColor: on ? 'var(--indigo)' : 'var(--border)', background: on ? 'var(--indigo-pale)' : 'var(--surface2)', opacity: on ? 1 : 0.5 }}>
+                    <div className="flex items-center gap-8 mb-2">
+                      <span style={{ fontSize:15 }}>{t.icon}</span>
+                      <span style={{ fontWeight:600, fontSize:13, color: on ? 'var(--indigo-light)' : 'var(--text2)' }}>{t.label}</span>
+                      <span style={{ marginLeft:'auto', fontSize:10, fontWeight:700, color: on ? 'var(--emerald)' : 'var(--text3)' }}>{on ? 'ON' : 'OFF'}</span>
+                    </div>
+                    <p style={{ fontSize:11, color:'var(--text3)', paddingLeft:23 }}>{t.desc}</p>
+                  </button>
+                );
+              })}
+            </div>
           </div>
 
           {/* Exam config */}
