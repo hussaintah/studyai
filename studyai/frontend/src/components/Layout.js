@@ -1,4 +1,5 @@
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
 import { useAuth } from '../hooks/useAuth';
 
 const NAV = [
@@ -12,7 +13,15 @@ const NAV = [
 export default function Layout() {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
-  const name = user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'Student';
+  const [theme, setTheme] = useState(() => localStorage.getItem('studyai_theme') || 'dark');
+  const name = user?.user_metadata?.full_name?.split(' ')[0] || user?.email?.split('@')[0] || 'Student';
+
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme);
+    localStorage.setItem('studyai_theme', theme);
+  }, [theme]);
+
+  const toggleTheme = () => setTheme(t => t === 'dark' ? 'light' : 'dark');
 
   return (
     <div className="app-layout">
@@ -33,6 +42,10 @@ export default function Layout() {
             <div className="user-avatar">{name[0]?.toUpperCase()}</div>
             <span className="user-name">{name}</span>
           </div>
+          <button className="theme-toggle" onClick={toggleTheme}>
+            <span>{theme === 'dark' ? '☀️' : '🌙'}</span>
+            <span>{theme === 'dark' ? 'Light Mode' : 'Dark Mode'}</span>
+          </button>
           <button className="sign-out-btn" onClick={async () => { await signOut(); navigate('/auth'); }}>Sign out</button>
         </div>
       </nav>
