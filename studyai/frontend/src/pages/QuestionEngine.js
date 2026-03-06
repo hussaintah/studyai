@@ -60,7 +60,8 @@ export default function QuestionEngine() {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ question: q.question, correctAnswer: q.correct_answer, studentAnswer: answers[q.id], questionType: q.type, topic: q.topic })
       });
-      setEvaluations(e => ({ ...e, [q.id]: await res.json() }));
+      const ev = await res.json();
+      setEvaluations(e => ({ ...e, [q.id]: ev }));
     } catch {}
     setEvalLoading(l => ({ ...l, [q.id]: false }));
   };
