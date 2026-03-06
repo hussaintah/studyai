@@ -2,71 +2,32 @@ import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import { useAuth } from '../hooks/useAuth';
 
-const NAV_WORKSPACE = [
+const NAV = [
   {
-    to: '/',
-    label: 'Dashboard',
-    icon: (
-      <svg className="nav-icon" viewBox="0 0 20 20">
-        <rect x="2" y="2" width="7" height="7" rx="1"/>
-        <rect x="11" y="2" width="7" height="7" rx="1"/>
-        <rect x="2" y="11" width="7" height="7" rx="1"/>
-        <rect x="11" y="11" width="7" height="7" rx="1"/>
-      </svg>
-    ),
+    to: '/', label: 'Dashboard', end: true,
+    icon: <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"><rect x="2" y="2" width="7" height="7" rx="1"/><rect x="11" y="2" width="7" height="7" rx="1"/><rect x="2" y="11" width="7" height="7" rx="1"/><rect x="11" y="11" width="7" height="7" rx="1"/></svg>
   },
   {
-    to: '/questions',
-    label: 'Question Engine',
-    icon: (
-      <svg className="nav-icon" viewBox="0 0 20 20">
-        <circle cx="10" cy="10" r="7"/>
-        <path d="M10 6.5v4M10 13.5v.5"/>
-      </svg>
-    ),
+    to: '/questions', label: 'Question Engine',
+    icon: <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"><circle cx="10" cy="10" r="7"/><path d="M10 6.5v4M10 13.5v.5"/></svg>
   },
   {
-    to: '/exam',
-    label: 'Exam Simulator',
-    icon: (
-      <svg className="nav-icon" viewBox="0 0 20 20">
-        <rect x="3" y="2" width="14" height="16" rx="1"/>
-        <path d="M6 6h8M6 10h8M6 14h4"/>
-      </svg>
-    ),
+    to: '/exam', label: 'Exam Simulator',
+    icon: <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"><rect x="3" y="2" width="14" height="16" rx="1"/><path d="M6 6h8M6 10h8M6 14h4"/></svg>
   },
   {
-    to: '/flashcards',
-    label: 'Flashcards',
-    icon: (
-      <svg className="nav-icon" viewBox="0 0 20 20">
-        <rect x="2" y="4" width="16" height="12" rx="1"/>
-        <path d="M6 4V2M14 4V2"/>
-      </svg>
-    ),
+    to: '/flashcards', label: 'Flashcards',
+    icon: <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"><rect x="2" y="4" width="16" height="12" rx="1"/><path d="M6 4V2M14 4V2"/></svg>
+  },
+  {
+    to: '/tutor', label: 'AI Tutor',
+    icon: <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"><circle cx="10" cy="8" r="4"/><path d="M3 18c0-3.5 3.1-6 7-6s7 2.5 7 6"/></svg>
   },
 ];
 
-const NAV_TOOLS = [
-  {
-    to: '/tutor',
-    label: 'AI Tutor',
-    icon: (
-      <svg className="nav-icon" viewBox="0 0 20 20">
-        <circle cx="10" cy="8" r="4"/>
-        <path d="M3 18c0-3.5 3.1-6 7-6s7 2.5 7 6"/>
-      </svg>
-    ),
-  },
-];
-
-// Page name map for breadcrumb
 const PAGE_NAMES = {
-  '/': 'Dashboard',
-  '/flashcards': 'Flashcards',
-  '/questions': 'Question Engine',
-  '/exam': 'Exam Simulator',
-  '/tutor': 'AI Tutor',
+  '/': 'Dashboard', '/flashcards': 'Flashcards',
+  '/questions': 'Question Engine', '/exam': 'Exam Simulator', '/tutor': 'AI Tutor',
 };
 
 export default function Layout() {
@@ -74,6 +35,7 @@ export default function Layout() {
   const navigate = useNavigate();
   const location = useLocation();
   const [theme, setTheme] = useState(() => localStorage.getItem('studyai_theme') || 'dark');
+  const [collapsed, setCollapsed] = useState(false);
 
   const name = user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'Student';
   const firstName = name.split(' ')[0];
@@ -84,88 +46,79 @@ export default function Layout() {
     localStorage.setItem('studyai_theme', theme);
   }, [theme]);
 
-  const toggleTheme = () => setTheme(t => t === 'dark' ? 'light' : 'dark');
-
-  // Get current page label for breadcrumb
   const pageName = PAGE_NAMES[location.pathname] ||
     (location.pathname.startsWith('/flashcards/') ? 'Flashcards' : 'Page');
 
   return (
     <div className="app-layout">
-      {/* ── SIDEBAR ── */}
-      <aside className="sidebar">
+      <aside className={`sidebar${collapsed ? ' sidebar-collapsed' : ''}`}>
         <div className="logo-zone">
-          <div className="sidebar-logo">
-            <div className="logo-pip" />
-            Study<em style={{ fontStyle: 'italic', fontWeight: 300 }}>AI</em>
-            <span className="logo-beta">beta</span>
-          </div>
-          <button className="theme-toggle" onClick={toggleTheme} title="Toggle theme">
-            {/* Moon — shown in dark mode */}
-            <svg className="icon-moon" viewBox="0 0 24 24">
-              <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
-            </svg>
-            {/* Sun — shown in light mode */}
-            <svg className="icon-sun" viewBox="0 0 24 24">
-              <circle cx="12" cy="12" r="5"/>
-              <line x1="12" y1="1" x2="12" y2="3"/>
-              <line x1="12" y1="21" x2="12" y2="23"/>
-              <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/>
-              <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
-              <line x1="1" y1="12" x2="3" y2="12"/>
-              <line x1="21" y1="12" x2="23" y2="12"/>
-              <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/>
-              <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+          {!collapsed && (
+            <div className="sidebar-logo">
+              <div className="logo-pip" />
+              Study<em style={{ fontStyle: 'italic', fontWeight: 300 }}>AI</em>
+            </div>
+          )}
+          <button className="collapse-btn" onClick={() => setCollapsed(c => !c)} title={collapsed ? 'Expand' : 'Collapse'}>
+            <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
+              {collapsed
+                ? <path d="M7 4l6 6-6 6"/>
+                : <path d="M13 4l-6 6 6 6"/>}
             </svg>
           </button>
         </div>
 
         <nav className="sidebar-nav">
-          <span className="nav-label">Workspace</span>
-          {NAV_WORKSPACE.map(({ to, label, icon }) => (
+          {NAV.map(({ to, label, end, icon }) => (
             <NavLink
-              key={to}
-              to={to}
-              end={to === '/'}
+              key={to} to={to} end={end}
               className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`}
+              title={collapsed ? label : undefined}
             >
-              {icon}
-              {label}
-            </NavLink>
-          ))}
-
-          <span className="nav-label" style={{ marginTop: 10 }}>Tools</span>
-          {NAV_TOOLS.map(({ to, label, icon }) => (
-            <NavLink
-              key={to}
-              to={to}
-              className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`}
-            >
-              {icon}
-              {label}
+              <span className="nav-icon">{icon}</span>
+              {!collapsed && <span className="nav-label-text">{label}</span>}
             </NavLink>
           ))}
         </nav>
 
         <div className="sidebar-footer">
-          <div className="user-chip">
-            <div className="user-avatar">{initial}</div>
-            <div>
-              <div className="user-name">{firstName}</div>
-              <div className="user-plan">Free plan</div>
+          {!collapsed && (
+            <div className="user-chip">
+              <div className="user-avatar">{initial}</div>
+              <div>
+                <div className="user-name">{firstName}</div>
+                <div className="user-plan">Free plan</div>
+              </div>
             </div>
-          </div>
+          )}
+          {collapsed && <div className="user-avatar" style={{ margin: '0 auto 10px' }}>{initial}</div>}
+          <button className="theme-toggle" onClick={() => setTheme(t => t === 'dark' ? 'light' : 'dark')} title="Toggle theme">
+            <svg className="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round">
+              <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+            </svg>
+            <svg className="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round">
+              <circle cx="12" cy="12" r="5"/>
+              <line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/>
+              <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+              <line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/>
+              <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+            </svg>
+            {!collapsed && <span>{theme === 'dark' ? 'Light Mode' : 'Dark Mode'}</span>}
+          </button>
           <button className="sign-out-btn" onClick={async () => { await signOut(); navigate('/auth'); }}>
-            Sign out
+            {collapsed ? (
+              <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" style={{width:15,height:15}}>
+                <path d="M13 10H3M7 6l-4 4 4 4M12 4h4a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1h-4"/>
+              </svg>
+            ) : 'Sign out'}
           </button>
         </div>
       </aside>
 
-      {/* ── MAIN ── */}
       <main className="main-content">
         <div className="topbar">
           <div className="breadcrumb">
-            StudyAI <span style={{ opacity: 0.3, margin: '0 4px' }}>›</span>
+            StudyAI <span style={{ opacity: 0.3, margin: '0 6px' }}>›</span>
             <strong>{pageName}</strong>
           </div>
           <div className="topbar-actions">
@@ -178,7 +131,6 @@ export default function Layout() {
             </NavLink>
           </div>
         </div>
-
         <Outlet />
       </main>
     </div>
