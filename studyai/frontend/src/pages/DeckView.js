@@ -5,10 +5,10 @@ import { API_URL } from '../lib/supabase';
 import ContentInput from '../components/ContentInput';
 
 const RATINGS = [
-  { label: 'Again', value: 0, color: 'var(--rose)' },
-  { label: 'Hard', value: 2, color: 'var(--amber)' },
-  { label: 'Good', value: 4, color: 'var(--emerald)' },
-  { label: 'Easy', value: 5, color: 'var(--cyan)' },
+  { label: 'Again', value: 0, color: '#f43f5e' },
+  { label: 'Hard',  value: 2, color: 'var(--orange)' },
+  { label: 'Good',  value: 4, color: 'var(--lime)' },
+  { label: 'Easy',  value: 5, color: 'var(--cyan)' },
 ];
 
 export default function DeckView() {
@@ -25,11 +25,7 @@ export default function DeckView() {
   const [aiCount, setAiCount] = useState(10);
   const [aiLoading, setAiLoading] = useState(false);
 
-  const fetchCards = async () => {
-    const res = await fetch(`${API_URL}/api/flashcards/${deckId}`);
-    setCards(await res.json());
-  };
-
+  const fetchCards = async () => { const res = await fetch(`${API_URL}/api/flashcards/${deckId}`); setCards(await res.json()); };
   useEffect(() => { fetchCards(); }, [deckId]);
 
   const dueCards = cards.filter(c => new Date(c.next_review) <= new Date());
@@ -55,32 +51,36 @@ export default function DeckView() {
   const rateCard = async (quality) => {
     const card = dueCards[studyIdx];
     await fetch(`${API_URL}/api/flashcards/${card.id}/review`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ quality }) });
-    setResults(r => [...r, { quality }]);
-    setFlipped(false);
-    setTimeout(() => {
-      if (studyIdx + 1 >= dueCards.length) setMode('done');
-      else setStudyIdx(i => i + 1);
-    }, 80);
+    setResults(r => [...r, { quality }]); setFlipped(false);
+    setTimeout(() => { if (studyIdx + 1 >= dueCards.length) setMode('done'); else setStudyIdx(i => i + 1); }, 80);
   };
 
   const card = dueCards[studyIdx];
 
   return (
-    <div>
-      <div className="flex items-center gap-12 mb-20">
-        <Link to="/flashcards" style={{ color: 'var(--text2)', textDecoration: 'none', fontSize: 13 }}>← Decks</Link>
-        <h1 style={{ fontFamily: 'Syne', fontSize: 22, fontWeight: 700 }}>Deck</h1>
-        <span className="badge badge-indigo">{cards.length} cards</span>
-        {dueCards.length > 0 && <span className="badge badge-amber">{dueCards.length} due today</span>}
+    <div className="page-inner">
+      {/* Header */}
+      <div className="page-hdr">
+        <div className="flex items-center gap-12">
+          <Link to="/flashcards" style={{ fontFamily: 'DM Mono, monospace', fontSize: '0.72rem', color: 'var(--text-3)', textDecoration: 'none', letterSpacing: '0.06em', textTransform: 'uppercase' }}>
+            Flashcards
+          </Link>
+          <span style={{ color: 'var(--text-4)' }}>›</span>
+          <h1 style={{ fontSize: '1.6rem', marginBottom: 0 }}>Deck</h1>
+          <span className="badge badge-orange">{cards.length} cards</span>
+          {dueCards.length > 0 && <span className="badge badge-cyan">{dueCards.length} due today</span>}
+        </div>
       </div>
 
       <div className="tabs">
-        {[['list', '📋 All Cards'], ['add', '+ Add Card'], ['ai', '✨ AI Generate']].map(([m, l]) => (
-          <div key={m} className={`tab ${mode === m ? 'active' : ''}`} onClick={() => setMode(m)}>{l}</div>
+        {[['list', 'All Cards'], ['add', '+ Add Card'], ['ai', 'AI Generate']].map(([m, l]) => (
+          <div key={m} className={`tab${mode === m ? ' active' : ''}`} onClick={() => setMode(m)}>{l}</div>
         ))}
         {dueCards.length > 0 && (
-          <div className={`tab ${mode === 'study' ? 'active' : ''}`} onClick={() => { setStudyIdx(0); setFlipped(false); setResults([]); setMode('study'); }} style={{ background: mode === 'study' ? 'var(--emerald)' : '' }}>
-            🎯 Study Now ({dueCards.length})
+          <div className={`tab${mode === 'study' ? ' active' : ''}`}
+            style={{ color: mode === 'study' ? 'var(--lime)' : undefined, borderBottomColor: mode === 'study' ? 'var(--lime)' : undefined }}
+            onClick={() => { setStudyIdx(0); setFlipped(false); setResults([]); setMode('study'); }}>
+            Study Now ({dueCards.length})
           </div>
         )}
       </div>
@@ -88,27 +88,29 @@ export default function DeckView() {
       {/* LIST */}
       {mode === 'list' && (
         cards.length === 0 ? (
-          <div className="card text-center" style={{ padding: '44px' }}>
-            <p style={{ fontSize: 36, marginBottom: 10 }}>🃏</p>
-            <p style={{ fontFamily: 'Syne', fontSize: 15, marginBottom: 6 }}>No cards yet</p>
-            <div className="flex gap-8" style={{ justifyContent: 'center', marginTop: 12 }}>
-              <button className="btn btn-primary btn-sm" onClick={() => setMode('add')}>Add Manually</button>
-              <button className="btn btn-secondary btn-sm" onClick={() => setMode('ai')}>Generate with AI</button>
+          <div className="empty-state">
+            <div className="empty-icon"><svg viewBox="0 0 20 20"><rect x="2" y="4" width="16" height="12" rx="1"/><path d="M6 4V2M14 4V2"/></svg></div>
+            <h3>No cards yet</h3>
+            <p>Add cards manually or generate them from your notes with AI.</p>
+            <div className="flex gap-8" style={{ justifyContent: 'center' }}>
+              <button className="btn-primary" onClick={() => setMode('add')}>Add Manually</button>
+              <button className="btn-secondary" onClick={() => setMode('ai')}>Generate with AI</button>
             </div>
           </div>
         ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <div>
             {cards.map((c, i) => (
-              <div key={c.id} className="card" style={{ display: 'flex', gap: 14, alignItems: 'flex-start' }}>
-                <span style={{ color: 'var(--text3)', fontSize: 11, minWidth: 20, marginTop: 2 }}>#{i + 1}</span>
+              <div key={c.id} className="card-list-item">
+                <span className="card-side-label">Q</span>
                 <div style={{ flex: 1 }}>
-                  <p style={{ fontWeight: 500, marginBottom: 5, fontSize: 14 }}>{c.front}</p>
-                  <p style={{ color: 'var(--text2)', fontSize: 13 }}>{c.back}</p>
+                  <div className="card-side-text" style={{ fontWeight: 500, color: 'var(--text)', marginBottom: 8 }}>{c.front}</div>
+                  <div className="card-divider" style={{ width: '100%', height: 1, background: 'var(--panel-bdr)', margin: '8px 0' }} />
+                  <div className="card-side-text">{c.back}</div>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'flex-end', flexShrink: 0 }}>
-                  {c.topic && <span className="badge badge-cyan" style={{ fontSize: 10 }}>{c.topic}</span>}
-                  <span className="badge badge-indigo" style={{ fontSize: 10 }}>×{c.repetitions} reviews</span>
-                  {new Date(c.next_review) <= new Date() && <span className="badge badge-amber" style={{ fontSize: 10 }}>Due</span>}
+                  {c.topic && <span className="badge badge-cyan">{c.topic}</span>}
+                  <span className="badge badge-violet">×{c.repetitions} reviews</span>
+                  {new Date(c.next_review) <= new Date() && <span className="badge badge-orange">Due</span>}
                 </div>
               </div>
             ))}
@@ -118,94 +120,99 @@ export default function DeckView() {
 
       {/* ADD */}
       {mode === 'add' && (
-        <div className="card" style={{ maxWidth: 540 }}>
-          <h3 style={{ fontFamily: 'Syne', fontWeight: 600, marginBottom: 16 }}>Add a Card</h3>
-          <div className="form-group"><label>Front — Question or Term</label><textarea className="content-area" style={{ minHeight: 80 }} value={front} onChange={e => setFront(e.target.value)} placeholder="e.g. What is mitosis?" /></div>
-          <div className="form-group"><label>Back — Answer or Definition</label><textarea className="content-area" style={{ minHeight: 90 }} value={back} onChange={e => setBack(e.target.value)} placeholder="e.g. Cell division that produces two identical daughter cells..." /></div>
-          <button className="btn btn-primary" onClick={addCard} disabled={!front.trim() || !back.trim()}>Add Card</button>
+        <div style={{ maxWidth: 560 }}>
+          <div className="cpanel">
+            <div className="cpanel-title">Add a Card</div>
+            <div className="form-group">
+              <label>Front — Question or Term</label>
+              <textarea className="content-area" style={{ minHeight: 80 }} value={front} onChange={e => setFront(e.target.value)} placeholder="e.g. What is mitosis?" />
+            </div>
+            <div className="form-group">
+              <label>Back — Answer or Definition</label>
+              <textarea className="content-area" style={{ minHeight: 90 }} value={back} onChange={e => setBack(e.target.value)} placeholder="e.g. Cell division that produces two identical daughter cells..." />
+            </div>
+            <button className="btn-primary" onClick={addCard} disabled={!front.trim() || !back.trim()}>Add Card</button>
+          </div>
         </div>
       )}
 
       {/* AI GENERATE */}
       {mode === 'ai' && (
-        <div className="card" style={{ maxWidth: 680 }}>
-          <h3 style={{ fontFamily: 'Syne', fontWeight: 600, marginBottom: 4 }}>✨ Generate Flashcards with AI</h3>
-          <p className="text-muted mb-16">Upload a PDF or paste your study material — AI will create flashcards from it</p>
-          <ContentInput value={aiContent} onChange={setAiContent} placeholder="Paste your lecture notes, textbook content, or any study material..." />
-          <div className="form-group mt-16">
-            <label>Number of Cards</label>
-            <div style={{ display: 'flex', gap: 8, marginTop: 6 }}>
-              {[5, 10, 15, 20].map(n => (
-                <button key={n} onClick={() => setAiCount(n)} style={{ padding: '7px 16px', borderRadius: 'var(--radius-sm)', border: '1px solid', cursor: 'pointer', fontFamily: 'Outfit', fontSize: 13, borderColor: aiCount === n ? 'var(--indigo)' : 'var(--border)', background: aiCount === n ? 'var(--indigo-pale)' : 'var(--surface2)', color: aiCount === n ? 'var(--indigo-light)' : 'var(--text2)' }}>{n}</button>
-              ))}
+        <div style={{ maxWidth: 680 }}>
+          <div className="cpanel">
+            <div className="cpanel-title">Generate Flashcards with AI</div>
+            <p style={{ fontSize: '0.84rem', color: 'var(--text-3)', marginBottom: 20 }}>Upload a PDF or paste your study material — AI will create flashcards from it</p>
+            <ContentInput value={aiContent} onChange={setAiContent} placeholder="Paste your lecture notes, textbook content, or any study material..." />
+            <div style={{ marginTop: 20 }}>
+              <span className="sec-label">Number of Cards</span>
+              <div className="pill-row">
+                {[5, 10, 15, 20].map(n => (
+                  <button key={n} className={`pill${aiCount === n ? ' active-orange' : ''}`} onClick={() => setAiCount(n)}>{n}</button>
+                ))}
+              </div>
             </div>
+            <button className="btn-primary" style={{ marginTop: 20 }} onClick={generateAI} disabled={!aiContent.trim() || aiLoading}>
+              {aiLoading ? 'Generating...' : 'Generate Cards'}
+            </button>
           </div>
-          <button className="btn btn-primary mt-16" onClick={generateAI} disabled={!aiContent.trim() || aiLoading}>
-            {aiLoading ? '⏳ Generating flashcards...' : '✨ Generate Cards'}
-          </button>
         </div>
       )}
 
       {/* STUDY */}
       {mode === 'study' && card && (
-        <div style={{ maxWidth: 580, margin: '0 auto' }}>
-          <div className="flex items-center justify-between mb-12">
-            <span className="text-muted">{studyIdx + 1} / {dueCards.length}</span>
-            <button className="btn btn-secondary btn-sm" onClick={() => setMode('list')}>Exit</button>
-          </div>
-          <div className="progress-bar mb-20">
-            <div className="progress-fill" style={{ width: `${(studyIdx / dueCards.length) * 100}%` }} />
+        <div className="flashcard-wrap">
+          <div className="flex items-center justify-between" style={{ width: '100%', maxWidth: 560, marginBottom: 16 }}>
+            <span style={{ fontFamily: 'DM Mono, monospace', fontSize: '0.70rem', color: 'var(--text-3)' }}>{studyIdx + 1} / {dueCards.length}</span>
+            <button className="btn-secondary btn-sm" onClick={() => setMode('list')}>Exit</button>
           </div>
 
-          <div className="flashcard-wrap" onClick={() => setFlipped(f => !f)}>
-            <div className={`flashcard ${flipped ? 'flipped' : ''}`}>
-              <div className="flashcard-face flashcard-front">
-                <span className="flashcard-label">QUESTION</span>
-                {card.topic && <span style={{ position: 'absolute', top: 12, right: 14, fontSize: 10, color: 'var(--text3)', background: 'var(--surface2)', padding: '2px 8px', borderRadius: 50 }}>{card.topic}</span>}
-                <p className="flashcard-text">{card.front}</p>
-                {!flipped && <p style={{ position: 'absolute', bottom: 12, color: 'var(--text3)', fontSize: 11 }}>Click to flip</p>}
+          <div className="exam-progress-bar" style={{ width: '100%', maxWidth: 560, marginBottom: 24 }}>
+            <div className="exam-progress-fill" style={{ width: `${(studyIdx / dueCards.length) * 100}%` }} />
+          </div>
+
+          <div className="flashcard" onClick={() => setFlipped(f => !f)}>
+            <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 3, background: 'linear-gradient(90deg, var(--orange), var(--orange-2))' }} />
+            <div>
+              <div style={{ fontFamily: 'DM Mono, monospace', fontSize: '0.55rem', textTransform: 'uppercase', letterSpacing: '0.14em', color: flipped ? 'var(--lime)' : 'var(--orange)', marginBottom: 16, textAlign: 'center' }}>
+                {flipped ? 'Answer' : 'Question'}
               </div>
-              <div className="flashcard-face flashcard-back">
-                <span className="flashcard-label">ANSWER</span>
-                <p className="flashcard-text">{card.back}</p>
-              </div>
+              {card.topic && (
+                <div style={{ fontFamily: 'DM Mono, monospace', fontSize: '0.56rem', color: 'var(--text-4)', textTransform: 'uppercase', letterSpacing: '0.10em', marginBottom: 12, textAlign: 'center' }}>{card.topic}</div>
+              )}
+              <div className="flashcard-text">{flipped ? card.back : card.front}</div>
             </div>
+            {!flipped && <div className="flashcard-hint">Click to reveal answer</div>}
           </div>
 
           {flipped && (
-            <div style={{ marginTop: 20 }}>
-              <p style={{ textAlign: 'center', fontSize: 12, color: 'var(--text2)', marginBottom: 10 }}>How well did you know this?</p>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10 }}>
-                {RATINGS.map(({ label, value, color }) => (
-                  <button key={value} onClick={() => rateCard(value)} style={{ padding: '11px 8px', borderRadius: 'var(--radius-sm)', border: `1px solid ${color}40`, background: `${color}10`, color, cursor: 'pointer', fontFamily: 'Outfit', fontWeight: 600, fontSize: 13, transition: 'all 0.15s' }}>
-                    {label}
-                  </button>
-                ))}
-              </div>
+            <div className="rating-row" style={{ width: '100%', maxWidth: 560 }}>
+              {RATINGS.map(({ label, value, color }) => (
+                <button key={value} className="rating-btn" style={{ borderColor: color, color }}
+                  onClick={() => rateCard(value)}>{label}</button>
+              ))}
             </div>
           )}
+          {!flipped && <div style={{ height: 64 }} />}
         </div>
       )}
 
       {/* DONE */}
       {mode === 'done' && (
-        <div className="card text-center" style={{ maxWidth: 440, margin: '0 auto', padding: '40px' }}>
-          <div style={{ fontSize: 44, marginBottom: 12 }}>🎉</div>
-          <h2 style={{ fontFamily: 'Syne', fontWeight: 700, marginBottom: 6 }}>Session Complete!</h2>
-          <p className="text-muted mb-20">You reviewed {results.length} cards</p>
-          <div className="grid-2 mb-20">
-            <div className="card" style={{ background: 'rgba(16,185,129,0.1)', border: '1px solid var(--emerald)', padding: '16px', textAlign: 'center' }}>
-              <div style={{ fontFamily: 'Syne', fontSize: 26, color: 'var(--emerald)' }}>{results.filter(r => r.quality >= 3).length}</div>
-              <div style={{ fontSize: 12, color: 'var(--emerald)' }}>Correct</div>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '60px 20px', textAlign: 'center' }}>
+          <div style={{ fontFamily: 'DM Mono, monospace', fontSize: '0.60rem', color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: '0.14em', marginBottom: 12 }}>Session Complete</div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 28, maxWidth: 320, width: '100%' }}>
+            <div className="stat-card sc-lime" style={{ textAlign: 'center', padding: '20px' }}>
+              <div className="stat-num" style={{ fontSize: '2.2rem' }}>{results.filter(r => r.quality >= 3).length}</div>
+              <div className="stat-label">Correct</div>
             </div>
-            <div className="card" style={{ background: 'rgba(244,63,94,0.1)', border: '1px solid var(--rose)', padding: '16px', textAlign: 'center' }}>
-              <div style={{ fontFamily: 'Syne', fontSize: 26, color: 'var(--rose)' }}>{results.filter(r => r.quality < 3).length}</div>
-              <div style={{ fontSize: 12, color: 'var(--rose)' }}>Needs Review</div>
+            <div className="stat-card sc-orange" style={{ textAlign: 'center', padding: '20px' }}>
+              <div className="stat-num" style={{ fontSize: '2.2rem' }}>{results.filter(r => r.quality < 3).length}</div>
+              <div className="stat-label">Review</div>
             </div>
           </div>
-          <div className="flex gap-8" style={{ justifyContent: 'center' }}>
-            <button className="btn btn-primary" onClick={() => { setStudyIdx(0); setFlipped(false); setResults([]); setMode('study'); }}>Study Again</button>
-            <button className="btn btn-secondary" onClick={() => setMode('list')}>Back to Deck</button>
+          <div className="flex gap-10">
+            <button className="btn-primary" onClick={() => { setStudyIdx(0); setFlipped(false); setResults([]); setMode('study'); }}>Study Again</button>
+            <button className="btn-secondary" onClick={() => setMode('list')}>Back to Deck</button>
           </div>
         </div>
       )}
