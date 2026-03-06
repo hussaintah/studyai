@@ -3,7 +3,18 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { API_URL } from '../lib/supabase';
 
-const COLORS = ['#6366f1','#22d3ee','#10b981','#f59e0b','#f43f5e','#a855f7','#f97316'];
+const PALETTE = [
+  { bg: '#f05a00', label: 'orange' },
+  { bg: '#00c2cc', label: 'cyan' },
+  { bg: '#7ec800', label: 'lime' },
+  { bg: '#7c3aff', label: 'violet' },
+  { bg: '#f43f5e', label: 'rose' },
+  { bg: '#0ea5e9', label: 'sky' },
+  { bg: '#f59e0b', label: 'amber' },
+  { bg: '#10b981', label: 'emerald' },
+];
+
+function randomColor() { return PALETTE[Math.floor(Math.random() * PALETTE.length)].bg; }
 
 export default function Flashcards() {
   const { user } = useAuth();
@@ -13,7 +24,7 @@ export default function Flashcards() {
   const [showModal, setShowModal] = useState(false);
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
-  const [color, setColor] = useState(COLORS[0]);
+  const [color, setColor] = useState(PALETTE[0].bg);
   const [isPublic, setIsPublic] = useState(false);
   const [loading, setLoading] = useState(false);
   const [cloning, setCloning] = useState(null);
@@ -25,6 +36,8 @@ export default function Flashcards() {
 
   useEffect(() => { if (user) fetchDecks(); }, [user]);
 
+  const openModal = () => { setColor(randomColor()); setShowModal(true); };
+
   const createDeck = async () => {
     if (!name.trim()) return;
     setLoading(true);
@@ -32,7 +45,7 @@ export default function Flashcards() {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ userId: user.id, name, description, color, isPublic })
     });
-    setName(''); setDescription(''); setColor(COLORS[0]); setIsPublic(false);
+    setName(''); setDescription(''); setColor(randomColor()); setIsPublic(false);
     setShowModal(false); setLoading(false); fetchDecks();
   };
 
@@ -52,64 +65,65 @@ export default function Flashcards() {
     setCloning(null); setTab('mine'); fetchDecks();
   };
 
-  const DeckCard = ({ deck, isShared }) => (
-    <div style={{ position: 'relative' }}>
-      {isShared ? (
-        <div className="card" style={{ cursor: 'default' }}>
-          <div style={{ width: 38, height: 38, borderRadius: 9, marginBottom: 10, background: `${deck.color}18`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, borderLeft: `3px solid ${deck.color}` }}>🃏</div>
-          <p style={{ fontFamily: 'Syne', fontWeight: 600, fontSize: 14, marginBottom: 4 }}>{deck.name}</p>
-          {deck.description && <p className="text-muted mb-12" style={{ fontSize: 12 }}>{deck.description}</p>}
-          <div className="flex items-center justify-between mt-12">
-            <span className="badge badge-indigo">{deck.flashcards?.[0]?.count || 0} cards</span>
-            <button className="btn btn-primary btn-sm" onClick={() => cloneDeck(deck.id)} disabled={cloning === deck.id}>
-              {cloning === deck.id ? 'Cloning...' : '+ Import Deck'}
-            </button>
-          </div>
+  const DeckCard = ({ deck, isShared }) => {
+    const count = deck.flashcards?.[0]?.count || 0;
+    const inner = (
+      <div className="deck-card" style={{ borderColor: `${deck.color}30` }}>
+        <div className="deck-accent" style={{ background: `linear-gradient(90deg, ${deck.color}, ${deck.color}88)` }} />
+        <div className="deck-initial" style={{ background: deck.color }}>
+          {deck.name[0]?.toUpperCase()}
         </div>
-      ) : (
-        <Link to={`/flashcards/${deck.id}`} style={{ textDecoration: 'none' }}>
-          <div className="card card-hover">
-            <div style={{ width: 38, height: 38, borderRadius: 9, marginBottom: 10, background: `${deck.color}18`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, borderLeft: `3px solid ${deck.color}` }}>🃏</div>
-            <p style={{ fontFamily: 'Syne', fontWeight: 600, fontSize: 14, marginBottom: 4 }}>{deck.name}</p>
-            {deck.description && <p className="text-muted mb-12" style={{ fontSize: 12 }}>{deck.description}</p>}
-            <div className="flex items-center justify-between mt-12">
-              <div className="flex gap-6">
-                <span className="badge badge-indigo">{deck.flashcards?.[0]?.count || 0} cards</span>
-                {deck.is_public && <span className="badge badge-cyan">Public</span>}
-              </div>
-              <button className="btn btn-danger btn-sm" onClick={e => deleteDeck(e, deck.id)}>Delete</button>
-            </div>
-          </div>
-        </Link>
-      )}
-    </div>
-  );
+        <div className="deck-name">{deck.name}</div>
+        {deck.description && <div className="deck-desc">{deck.description}</div>}
+        <div className="deck-footer">
+          <span className="badge badge-orange" style={{ borderColor: `${deck.color}40`, color: deck.color, background: `${deck.color}15` }}>
+            {count} card{count !== 1 ? 's' : ''}
+          </span>
+          {isShared ? (
+            <button className="btn-primary btn-sm" style={{ padding: '5px 12px', fontSize: '0.72rem' }}
+              onClick={e => { e.preventDefault(); cloneDeck(deck.id); }}
+              disabled={cloning === deck.id}>
+              {cloning === deck.id ? 'Importing...' : '+ Import'}
+            </button>
+          ) : (
+            <button className="btn-danger btn-sm"
+              onClick={e => deleteDeck(e, deck.id)}>
+              Delete
+            </button>
+          )}
+        </div>
+      </div>
+    );
+    return isShared ? <div>{inner}</div> : <Link to={`/flashcards/${deck.id}`} style={{ textDecoration: 'none' }}>{inner}</Link>;
+  };
 
   return (
-    <div>
-      <div className="flex items-center justify-between mb-20">
+    <div className="page-inner">
+      <div className="page-hdr flex items-center justify-between">
         <div>
-          <h1 style={{ fontFamily: 'Syne', fontSize: 24, fontWeight: 700 }}>Flashcards 🃏</h1>
-          <p className="text-muted">Spaced repetition — study less, remember more</p>
+          <h1>Flashcards</h1>
+          <p>Spaced repetition — study less, remember more</p>
         </div>
-        <button className="btn btn-primary" onClick={() => setShowModal(true)}>+ New Deck</button>
+        <button className="btn-primary" onClick={openModal}>+ New Deck</button>
       </div>
 
       <div className="tabs">
-        <div className={`tab ${tab === 'mine' ? 'active' : ''}`} onClick={() => setTab('mine')}>My Decks ({decks.length})</div>
-        <div className={`tab ${tab === 'shared' ? 'active' : ''}`} onClick={() => setTab('shared')}>Shared by Others ({sharedDecks.length})</div>
+        <div className={`tab${tab === 'mine' ? ' active' : ''}`} onClick={() => setTab('mine')}>My Decks ({decks.length})</div>
+        <div className={`tab${tab === 'shared' ? ' active' : ''}`} onClick={() => setTab('shared')}>Shared by Others ({sharedDecks.length})</div>
       </div>
 
       {tab === 'mine' && (
         decks.length === 0 ? (
-          <div className="card text-center" style={{ padding: '48px 20px' }}>
-            <div style={{ fontSize: 40, marginBottom: 12 }}>📦</div>
-            <p style={{ fontFamily: 'Syne', fontSize: 16, marginBottom: 6 }}>No decks yet</p>
-            <p className="text-muted mb-16">Create a deck and add cards manually or generate them from your notes with AI</p>
-            <button className="btn btn-primary" onClick={() => setShowModal(true)}>Create Your First Deck</button>
+          <div className="empty-state">
+            <div className="empty-icon">
+              <svg viewBox="0 0 20 20"><rect x="2" y="4" width="16" height="12" rx="1"/><path d="M6 4V2M14 4V2"/></svg>
+            </div>
+            <h3>No decks yet</h3>
+            <p>Create a deck and add cards manually, or generate them from your notes with AI.</p>
+            <button className="btn-primary" onClick={openModal}>Create Your First Deck</button>
           </div>
         ) : (
-          <div className="grid-3">
+          <div className="deck-grid">
             {decks.map(deck => <DeckCard key={deck.id} deck={deck} isShared={false} />)}
           </div>
         )
@@ -117,13 +131,15 @@ export default function Flashcards() {
 
       {tab === 'shared' && (
         sharedDecks.length === 0 ? (
-          <div className="card text-center" style={{ padding: '40px' }}>
-            <p style={{ fontSize: 32, marginBottom: 10 }}>🌐</p>
-            <p style={{ fontFamily: 'Syne', fontSize: 15, marginBottom: 6 }}>No public decks yet</p>
-            <p className="text-muted">When other students make their decks public, they'll appear here. You can import them into your own account.</p>
+          <div className="empty-state">
+            <div className="empty-icon">
+              <svg viewBox="0 0 20 20"><circle cx="10" cy="10" r="7"/><path d="M10 6.5v4M10 13.5v.5"/></svg>
+            </div>
+            <h3>No public decks yet</h3>
+            <p>When other students make their decks public, they'll appear here for you to import.</p>
           </div>
         ) : (
-          <div className="grid-3">
+          <div className="deck-grid">
             {sharedDecks.map(deck => <DeckCard key={deck.id} deck={deck} isShared={true} />)}
           </div>
         )
@@ -132,27 +148,34 @@ export default function Flashcards() {
       {showModal && (
         <div className="modal-overlay" onClick={() => setShowModal(false)}>
           <div className="modal" onClick={e => e.stopPropagation()}>
-            <h3 style={{ fontFamily: 'Syne', fontWeight: 700, marginBottom: 18 }}>Create New Deck</h3>
-            <div className="form-group"><label>Deck Name</label><input type="text" placeholder="e.g. Biology Chapter 3" value={name} onChange={e => setName(e.target.value)} autoFocus /></div>
-            <div className="form-group"><label>Description (optional)</label><input type="text" placeholder="Brief description" value={description} onChange={e => setDescription(e.target.value)} /></div>
+            <h3>Create New Deck</h3>
             <div className="form-group">
-              <label>Color</label>
-              <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
-                {COLORS.map(c => (
-                  <div key={c} onClick={() => setColor(c)} style={{ width: 26, height: 26, borderRadius: '50%', background: c, cursor: 'pointer', border: color === c ? '3px solid white' : '3px solid transparent', outline: color === c ? `2px solid ${c}` : 'none' }} />
+              <label>Deck Name</label>
+              <input type="text" placeholder="e.g. Thermodynamics Chapter 3" value={name} onChange={e => setName(e.target.value)} autoFocus />
+            </div>
+            <div className="form-group">
+              <label>Description (optional)</label>
+              <input type="text" placeholder="Brief description" value={description} onChange={e => setDescription(e.target.value)} />
+            </div>
+            <div className="form-group">
+              <label>Deck Color</label>
+              <div className="color-swatches">
+                {PALETTE.map(c => (
+                  <div key={c.bg} className={`color-swatch${color === c.bg ? ' selected' : ''}`}
+                    style={{ background: c.bg }} onClick={() => setColor(c.bg)} />
                 ))}
               </div>
             </div>
-            <label style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px', background: 'var(--surface2)', borderRadius: 'var(--radius-sm)', cursor: 'pointer', marginBottom: 16 }}>
-              <input type="checkbox" checked={isPublic} onChange={e => setIsPublic(e.target.checked)} style={{ width: 16, height: 16, accentColor: 'var(--indigo)' }} />
+            <label style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 16px', background: 'rgba(240,90,0,0.05)', border: '1px solid rgba(240,90,0,0.15)', cursor: 'pointer', marginBottom: 20 }}>
+              <input type="checkbox" checked={isPublic} onChange={e => setIsPublic(e.target.checked)} style={{ width: 16, height: 16, accentColor: 'var(--orange)' }} />
               <div>
-                <p style={{ fontSize: 13, fontWeight: 500 }}>Make deck public</p>
-                <p style={{ fontSize: 12, color: 'var(--text2)' }}>Other students can find and import this deck</p>
+                <div style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text)' }}>Make deck public</div>
+                <div style={{ fontSize: '0.75rem', color: 'var(--text-3)' }}>Other students can find and import this deck</div>
               </div>
             </label>
             <div className="flex gap-8">
-              <button className="btn btn-primary" onClick={createDeck} disabled={!name.trim() || loading}>{loading ? 'Creating...' : 'Create Deck'}</button>
-              <button className="btn btn-secondary" onClick={() => setShowModal(false)}>Cancel</button>
+              <button className="btn-primary" onClick={createDeck} disabled={!name.trim() || loading}>{loading ? 'Creating...' : 'Create Deck'}</button>
+              <button className="btn-secondary" onClick={() => setShowModal(false)}>Cancel</button>
             </div>
           </div>
         </div>
