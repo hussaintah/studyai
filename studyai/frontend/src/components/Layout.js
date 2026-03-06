@@ -1,27 +1,17 @@
-import { Outlet, NavLink, useNavigate } from 'react-router-dom';
-import { useState } from 'react';
+import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom';
+import { useState, useEffect } from 'react';
 import { useAuth } from '../hooks/useAuth';
 
-const NAV = [
+const NAV_WORKSPACE = [
   {
     to: '/',
     label: 'Dashboard',
     icon: (
-      <svg viewBox="0 0 18 18" fill="currentColor" width="16" height="16">
-        <rect x="1" y="1" width="7" height="7" rx="1.5"/>
-        <rect x="10" y="1" width="7" height="7" rx="1.5"/>
-        <rect x="1" y="10" width="7" height="7" rx="1.5"/>
-        <rect x="10" y="10" width="7" height="7" rx="1.5"/>
-      </svg>
-    ),
-  },
-  {
-    to: '/flashcards',
-    label: 'Flashcards',
-    icon: (
-      <svg viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" width="16" height="16">
-        <rect x="1" y="4" width="16" height="11" rx="2"/>
-        <path d="M5 4V3M13 4V3"/>
+      <svg className="nav-icon" viewBox="0 0 20 20">
+        <rect x="2" y="2" width="7" height="7" rx="1"/>
+        <rect x="11" y="2" width="7" height="7" rx="1"/>
+        <rect x="2" y="11" width="7" height="7" rx="1"/>
+        <rect x="11" y="11" width="7" height="7" rx="1"/>
       </svg>
     ),
   },
@@ -29,9 +19,9 @@ const NAV = [
     to: '/questions',
     label: 'Question Engine',
     icon: (
-      <svg viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" width="16" height="16">
-        <circle cx="9" cy="9" r="7"/>
-        <path d="M9 5.5c0 0 1.5.5 1.5 2S9 9 9 10M9 12.5v.5"/>
+      <svg className="nav-icon" viewBox="0 0 20 20">
+        <circle cx="10" cy="10" r="7"/>
+        <path d="M10 6.5v4M10 13.5v.5"/>
       </svg>
     ),
   },
@@ -39,122 +29,156 @@ const NAV = [
     to: '/exam',
     label: 'Exam Simulator',
     icon: (
-      <svg viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" width="16" height="16">
-        <rect x="3" y="1" width="12" height="16" rx="1.5"/>
-        <path d="M6 6h6M6 9h6M6 12h3"/>
+      <svg className="nav-icon" viewBox="0 0 20 20">
+        <rect x="3" y="2" width="14" height="16" rx="1"/>
+        <path d="M6 6h8M6 10h8M6 14h4"/>
       </svg>
     ),
   },
   {
-    to: '/tutor',
-    label: 'AI Tutor',
+    to: '/flashcards',
+    label: 'Flashcards',
     icon: (
-      <svg viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" width="16" height="16">
-        <circle cx="9" cy="6.5" r="3.5"/>
-        <path d="M2 17c0-3.5 3.1-6 7-6s7 2.5 7 6"/>
+      <svg className="nav-icon" viewBox="0 0 20 20">
+        <rect x="2" y="4" width="16" height="12" rx="1"/>
+        <path d="M6 4V2M14 4V2"/>
       </svg>
     ),
   },
 ];
 
+const NAV_TOOLS = [
+  {
+    to: '/tutor',
+    label: 'AI Tutor',
+    icon: (
+      <svg className="nav-icon" viewBox="0 0 20 20">
+        <circle cx="10" cy="8" r="4"/>
+        <path d="M3 18c0-3.5 3.1-6 7-6s7 2.5 7 6"/>
+      </svg>
+    ),
+  },
+];
+
+// Page name map for breadcrumb
+const PAGE_NAMES = {
+  '/': 'Dashboard',
+  '/flashcards': 'Flashcards',
+  '/questions': 'Question Engine',
+  '/exam': 'Exam Simulator',
+  '/tutor': 'AI Tutor',
+};
+
 export default function Layout() {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+  const [theme, setTheme] = useState(() => localStorage.getItem('studyai_theme') || 'dark');
 
-  // KEY FIX: was 'studyai_theme' (underscore) — must match 'studyai-theme' (hyphen) used in index.js
-  const [theme, setTheme] = useState(
-    () => localStorage.getItem('studyai-theme') || 'dark'
-  );
+  const name = user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'Student';
+  const firstName = name.split(' ')[0];
+  const initial = firstName[0]?.toUpperCase();
 
-  const name =
-    user?.user_metadata?.full_name?.split(' ')[0] ||
-    user?.email?.split('@')[0] ||
-    'Student';
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme);
+    localStorage.setItem('studyai_theme', theme);
+  }, [theme]);
 
-  const toggleTheme = () => {
-    const next = theme === 'dark' ? 'light' : 'dark';
-    document.documentElement.setAttribute('data-theme', next);
-    localStorage.setItem('studyai-theme', next);
-    setTheme(next);
-  };
+  const toggleTheme = () => setTheme(t => t === 'dark' ? 'light' : 'dark');
+
+  // Get current page label for breadcrumb
+  const pageName = PAGE_NAMES[location.pathname] ||
+    (location.pathname.startsWith('/flashcards/') ? 'Flashcards' : 'Page');
 
   return (
     <div className="app-layout">
-      <nav className="sidebar">
-
-        {/* Logo */}
-        <div className="sidebar-logo">
-          <div className="logo-icon">
-            <svg viewBox="0 0 20 20" fill="white" width="17" height="17">
-              <rect x="2" y="2" width="7" height="7" rx="1.5"/>
-              <rect x="11" y="2" width="7" height="7" rx="1.5"/>
-              <rect x="2" y="11" width="7" height="7" rx="1.5"/>
-              <rect x="11" y="11" width="7" height="7" rx="1.5"/>
-            </svg>
+      {/* ── SIDEBAR ── */}
+      <aside className="sidebar">
+        <div className="logo-zone">
+          <div className="sidebar-logo">
+            <div className="logo-pip" />
+            Study<em style={{ fontStyle: 'italic', fontWeight: 300 }}>AI</em>
+            <span className="logo-beta">beta</span>
           </div>
-          <span>StudyAI</span>
+          <button className="theme-toggle" onClick={toggleTheme} title="Toggle theme">
+            {/* Moon — shown in dark mode */}
+            <svg className="icon-moon" viewBox="0 0 24 24">
+              <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+            </svg>
+            {/* Sun — shown in light mode */}
+            <svg className="icon-sun" viewBox="0 0 24 24">
+              <circle cx="12" cy="12" r="5"/>
+              <line x1="12" y1="1" x2="12" y2="3"/>
+              <line x1="12" y1="21" x2="12" y2="23"/>
+              <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/>
+              <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+              <line x1="1" y1="12" x2="3" y2="12"/>
+              <line x1="21" y1="12" x2="23" y2="12"/>
+              <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/>
+              <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+            </svg>
+          </button>
         </div>
 
-        {/* Nav items */}
-        <div className="nav-section">
-          {NAV.map(({ to, icon, label }) => (
+        <nav className="sidebar-nav">
+          <span className="nav-label">Workspace</span>
+          {NAV_WORKSPACE.map(({ to, label, icon }) => (
             <NavLink
               key={to}
               to={to}
               end={to === '/'}
               className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`}
             >
-              <span className="nav-icon">{icon}</span>
-              <span>{label}</span>
+              {icon}
+              {label}
             </NavLink>
           ))}
-        </div>
 
-        {/* Bottom controls */}
-        <div className="sidebar-bottom">
-          <div className="user-info">
-            <div className="user-avatar">{name[0]?.toUpperCase()}</div>
-            <span className="user-name">{name}</span>
+          <span className="nav-label" style={{ marginTop: 10 }}>Tools</span>
+          {NAV_TOOLS.map(({ to, label, icon }) => (
+            <NavLink
+              key={to}
+              to={to}
+              className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`}
+            >
+              {icon}
+              {label}
+            </NavLink>
+          ))}
+        </nav>
+
+        <div className="sidebar-footer">
+          <div className="user-chip">
+            <div className="user-avatar">{initial}</div>
+            <div>
+              <div className="user-name">{firstName}</div>
+              <div className="user-plan">Free plan</div>
+            </div>
           </div>
-
-          <button className="theme-toggle" onClick={toggleTheme}>
-            {theme === 'dark' ? (
-              /* Sun — shown in dark mode, click to go light */
-              <svg viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" width="14" height="14">
-                <circle cx="9" cy="9" r="3.5"/>
-                <line x1="9" y1="1" x2="9" y2="3"/>
-                <line x1="9" y1="15" x2="9" y2="17"/>
-                <line x1="3.1" y1="3.1" x2="4.5" y2="4.5"/>
-                <line x1="13.5" y1="13.5" x2="14.9" y2="14.9"/>
-                <line x1="1" y1="9" x2="3" y2="9"/>
-                <line x1="15" y1="9" x2="17" y2="9"/>
-                <line x1="3.1" y1="14.9" x2="4.5" y2="13.5"/>
-                <line x1="13.5" y1="4.5" x2="14.9" y2="3.1"/>
-              </svg>
-            ) : (
-              /* Moon — shown in light mode, click to go dark */
-              <svg viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" width="14" height="14">
-                <path d="M15 10.5A7 7 0 1 1 7.5 3a5 5 0 0 0 7.5 7.5z"/>
-              </svg>
-            )}
-            <span>{theme === 'dark' ? 'Light Mode' : 'Dark Mode'}</span>
-          </button>
-
-          <button
-            className="sign-out-btn"
-            onClick={async () => { await signOut(); navigate('/auth'); }}
-          >
-            <svg viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" width="13" height="13">
-              <path d="M7 3H3a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h4"/>
-              <path d="M12 13l4-4-4-4M16 9H7"/>
-            </svg>
+          <button className="sign-out-btn" onClick={async () => { await signOut(); navigate('/auth'); }}>
             Sign out
           </button>
         </div>
+      </aside>
 
-      </nav>
-
+      {/* ── MAIN ── */}
       <main className="main-content">
+        <div className="topbar">
+          <div className="breadcrumb">
+            StudyAI <span style={{ opacity: 0.3, margin: '0 4px' }}>›</span>
+            <strong>{pageName}</strong>
+          </div>
+          <div className="topbar-actions">
+            <NavLink to="/exam" className="btn-ghost">Take Mock Exam</NavLink>
+            <NavLink to="/flashcards" className="btn-primary">
+              <svg width="11" height="11" viewBox="0 0 11 11" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
+                <path d="M5.5 1v9M1 5.5h9"/>
+              </svg>
+              Upload Notes
+            </NavLink>
+          </div>
+        </div>
+
         <Outlet />
       </main>
     </div>
