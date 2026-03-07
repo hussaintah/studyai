@@ -34,7 +34,7 @@ export default function Layout() {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const [theme, setTheme] = useState(() => localStorage.getItem('studyai_theme') || 'dark');
+  const [theme, setTheme] = useState(() => localStorage.getItem('studyai-theme') || 'dark');
   const [collapsed, setCollapsed] = useState(false);
 
   const name = user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'Student';
@@ -43,7 +43,7 @@ export default function Layout() {
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
-    localStorage.setItem('studyai_theme', theme);
+    localStorage.setItem('studyai-theme', theme);
   }, [theme]);
 
   const pageName = PAGE_NAMES[location.pathname] ||
@@ -87,7 +87,6 @@ export default function Layout() {
               <div className="user-avatar">{initial}</div>
               <div>
                 <div className="user-name">{firstName}</div>
-                <div className="user-plan">Free plan</div>
               </div>
             </div>
           )}
