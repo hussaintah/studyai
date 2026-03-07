@@ -62,7 +62,7 @@ export default function DeckView() {
       {/* Header */}
       <div className="page-hdr">
         <div className="flex items-center gap-12">
-          <Link to="/flashcards" style={{ fontFamily: 'DM Mono, monospace', fontSize: '0.72rem', color: 'var(--text-3)', textDecoration: 'none', letterSpacing: '0.06em', textTransform: 'uppercase' }}>
+          <Link to="/flashcards" style={{ fontFamily: 'DM Mono, monospace', fontSize: '0.82rem', color: 'var(--text-3)', textDecoration: 'none', letterSpacing: '0.06em', textTransform: 'uppercase' }}>
             Flashcards
           </Link>
           <span style={{ color: 'var(--text-4)' }}>›</span>
@@ -141,7 +141,7 @@ export default function DeckView() {
         <div style={{ maxWidth: 680 }}>
           <div className="cpanel">
             <div className="cpanel-title">Generate Flashcards with AI</div>
-            <p style={{ fontSize: '0.84rem', color: 'var(--text-3)', marginBottom: 20 }}>Upload a PDF or paste your study material — AI will create flashcards from it</p>
+            <p style={{ fontSize: '0.92rem', color: 'var(--text-3)', marginBottom: 20 }}>Upload a PDF or paste your study material — AI will create flashcards from it</p>
             <ContentInput value={aiContent} onChange={setAiContent} placeholder="Paste your lecture notes, textbook content, or any study material..." />
             <div style={{ marginTop: 20 }}>
               <span className="sec-label">Number of Cards</span>
@@ -162,7 +162,7 @@ export default function DeckView() {
       {mode === 'study' && card && (
         <div className="flashcard-wrap">
           <div className="flex items-center justify-between" style={{ width: '100%', maxWidth: 560, marginBottom: 16 }}>
-            <span style={{ fontFamily: 'DM Mono, monospace', fontSize: '0.70rem', color: 'var(--text-3)' }}>{studyIdx + 1} / {dueCards.length}</span>
+            <span style={{ fontFamily: 'DM Mono, monospace', fontSize: '0.80rem', color: 'var(--text-3)' }}>{studyIdx + 1} / {dueCards.length}</span>
             <button className="btn-secondary btn-sm" onClick={() => setMode('list')}>Exit</button>
           </div>
 
@@ -173,11 +173,11 @@ export default function DeckView() {
           <div className="flashcard" onClick={() => setFlipped(f => !f)}>
             <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 3, background: 'linear-gradient(90deg, var(--orange), var(--orange-2))' }} />
             <div>
-              <div style={{ fontFamily: 'DM Mono, monospace', fontSize: '0.55rem', textTransform: 'uppercase', letterSpacing: '0.14em', color: flipped ? 'var(--lime)' : 'var(--orange)', marginBottom: 16, textAlign: 'center' }}>
+              <div style={{ fontFamily: 'DM Mono, monospace', fontSize: '0.68rem', textTransform: 'uppercase', letterSpacing: '0.14em', color: flipped ? 'var(--lime)' : 'var(--orange)', marginBottom: 16, textAlign: 'center' }}>
                 {flipped ? 'Answer' : 'Question'}
               </div>
               {card.topic && (
-                <div style={{ fontFamily: 'DM Mono, monospace', fontSize: '0.56rem', color: 'var(--text-4)', textTransform: 'uppercase', letterSpacing: '0.10em', marginBottom: 12, textAlign: 'center' }}>{card.topic}</div>
+                <div style={{ fontFamily: 'DM Mono, monospace', fontSize: '0.68rem', color: 'var(--text-4)', textTransform: 'uppercase', letterSpacing: '0.10em', marginBottom: 12, textAlign: 'center' }}>{card.topic}</div>
               )}
               <div className="flashcard-text">{flipped ? card.back : card.front}</div>
             </div>
@@ -199,7 +199,7 @@ export default function DeckView() {
       {/* DONE */}
       {mode === 'done' && (
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '60px 20px', textAlign: 'center' }}>
-          <div style={{ fontFamily: 'DM Mono, monospace', fontSize: '0.60rem', color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: '0.14em', marginBottom: 12 }}>Session Complete</div>
+          <div style={{ fontFamily: 'DM Mono, monospace', fontSize: '0.72rem', color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: '0.14em', marginBottom: 12 }}>Session Complete</div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 28, maxWidth: 320, width: '100%' }}>
             <div className="stat-card sc-lime" style={{ textAlign: 'center', padding: '20px' }}>
               <div className="stat-num" style={{ fontSize: '2.2rem' }}>{results.filter(r => r.quality >= 3).length}</div>
