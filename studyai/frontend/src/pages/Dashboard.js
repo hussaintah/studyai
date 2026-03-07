@@ -81,7 +81,7 @@ export default function Dashboard() {
 
         {/* Study Tools */}
         <div className="panel panel-orange">
-          <div>
+          <div className="panel-hdr">
             <div className="panel-title">Study Tools</div>
             <div className="panel-meta">4 modules available</div>
           </div>
@@ -110,7 +110,7 @@ export default function Dashboard() {
 
         {/* Recent Activity */}
         <div className="panel panel-cyan">
-          <div>
+          <div className="panel-hdr">
             <div className="panel-title">Recent Activity</div>
             <div className="panel-meta">{decks.length > 0 ? `${decks.length} deck${decks.length > 1 ? 's' : ''} active` : 'Nothing yet'}</div>
           </div>
@@ -150,7 +150,7 @@ export default function Dashboard() {
 
         {/* Right column */}
         <div className="right-col">
-          <div>
+          <div className="panel-hdr">
             <div className="panel-title">Quick Actions</div>
             <div className="panel-meta">Jump right in</div>
           </div>
