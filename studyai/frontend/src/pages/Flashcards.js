@@ -33,8 +33,11 @@ export default function Flashcards() {
   const fetchDecks = () => {
     setDecksLoading(true);
     Promise.all([
-      fetch(`${API_URL}/api/flashcards/decks/${user.id}`).then(r => r.json()).then(d => setDecks(Array.isArray(d) ? d : [])),
-      fetch(`${API_URL}/api/flashcards/shared?userId=${user.id}`).then(r => r.json()).then(d => setSharedDecks(Array.isArray(d) ? d : []))
+      fetch(`${API_URL}/api/flashcards/decks/${user.id}`).then(r => r.json()).then(d => setDecks(Array.isArray(d) ? d : [])).catch(e => console.error('My decks fetch error:', e)),
+      fetch(`${API_URL}/api/flashcards/shared?userId=${user.id}`).then(r => r.json()).then(d => {
+        if (d?.error) { console.error('Shared decks error:', d.error); setSharedDecks([]); }
+        else setSharedDecks(Array.isArray(d) ? d : []);
+      }).catch(e => console.error('Shared decks fetch error:', e))
     ]).finally(() => setDecksLoading(false));
   };
 
