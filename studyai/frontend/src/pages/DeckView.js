@@ -141,7 +141,7 @@ export default function DeckView() {
         <div style={{ maxWidth: 680 }}>
           <div className="cpanel">
             <div className="cpanel-title">Generate Flashcards with AI</div>
-            <p style={{ fontSize: '0.92rem', color: 'var(--text-3)', marginBottom: 20 }}>Upload a PDF or paste your study material — AI will create flashcards from it</p>
+            <p style={{ fontSize: '0.92rem', color: 'var(--text-2)', marginBottom: 20 }}>Upload a PDF or paste your study material — AI will create flashcards from it</p>
             <ContentInput value={aiContent} onChange={setAiContent} placeholder="Paste your lecture notes, textbook content, or any study material..." />
             <div style={{ marginTop: 20 }}>
               <span className="sec-label">Number of Cards</span>
@@ -177,7 +177,7 @@ export default function DeckView() {
                 {flipped ? 'Answer' : 'Question'}
               </div>
               {card.topic && (
-                <div style={{ fontFamily: 'DM Mono, monospace', fontSize: '0.68rem', color: 'var(--text-4)', textTransform: 'uppercase', letterSpacing: '0.10em', marginBottom: 12, textAlign: 'center' }}>{card.topic}</div>
+                <div style={{ fontFamily: 'DM Mono, monospace', fontSize: '0.68rem', color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: '0.10em', marginBottom: 12, textAlign: 'center' }}>{card.topic}</div>
               )}
               <div className="flashcard-text">{flipped ? card.back : card.front}</div>
             </div>
