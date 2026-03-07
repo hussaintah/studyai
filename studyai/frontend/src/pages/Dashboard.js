@@ -4,9 +4,10 @@ import { useAuth } from '../hooks/useAuth';
 import { API_URL } from '../lib/supabase';
 
 export default function Dashboard() {
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const [decks, setDecks] = useState([]);
+  const [decksLoading, setDecksLoading] = useState(true);
 
   const name = user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'Student';
   const firstName = name.split(' ')[0];
@@ -16,10 +17,15 @@ export default function Dashboard() {
   const dateStr = new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
 
   useEffect(() => {
+    if (authLoading) return;
     if (!user) return;
+    setDecksLoading(true);
     fetch(`${API_URL}/api/flashcards/decks/${user.id}`)
-      .then(r => r.json()).then(d => setDecks(Array.isArray(d) ? d : [])).catch(() => {});
-  }, [user]);
+      .then(r => r.json())
+      .then(d => setDecks(Array.isArray(d) ? d : []))
+      .catch(() => {})
+      .finally(() => setDecksLoading(false));
+  }, [user, authLoading]);
 
   const totalCards = decks.reduce((a, d) => a + (d.flashcards?.[0]?.count || 0), 0);
 
@@ -50,13 +56,13 @@ export default function Dashboard() {
       <div className="stats-row anim d2">
         <div className="stat-card sc-orange">
           <div className="stat-label">Flashcard Decks</div>
-          <div className="stat-num">{decks.length}</div>
-          <div className="stat-delta">{decks.length > 0 ? '↑ Active' : '— None yet'}</div>
+          <div className="stat-num">{decksLoading ? '—' : decks.length}</div>
+          <div className="stat-delta">{decksLoading ? '...' : decks.length > 0 ? '↑ Active' : '— None yet'}</div>
         </div>
         <div className="stat-card sc-cyan">
           <div className="stat-label">Total Cards</div>
-          <div className="stat-num">{totalCards}</div>
-          <div className="stat-delta">{totalCards > 0 ? '↑ Ready for review' : '— Upload to generate'}</div>
+          <div className="stat-num">{decksLoading ? '—' : totalCards}</div>
+          <div className="stat-delta">{decksLoading ? '...' : totalCards > 0 ? '↑ Ready for review' : '— Upload to generate'}</div>
         </div>
         <div className="stat-card sc-lime">
           <div className="stat-label">AI Questions</div>
