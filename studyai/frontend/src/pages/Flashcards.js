@@ -17,9 +17,10 @@ const PALETTE = [
 function randomColor() { return PALETTE[Math.floor(Math.random() * PALETTE.length)].bg; }
 
 export default function Flashcards() {
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const [decks, setDecks] = useState([]);
   const [sharedDecks, setSharedDecks] = useState([]);
+  const [decksLoading, setDecksLoading] = useState(true);
   const [tab, setTab] = useState('mine');
   const [showModal, setShowModal] = useState(false);
   const [name, setName] = useState('');
@@ -30,11 +31,14 @@ export default function Flashcards() {
   const [cloning, setCloning] = useState(null);
 
   const fetchDecks = () => {
-    fetch(`${API_URL}/api/flashcards/decks/${user.id}`).then(r => r.json()).then(d => setDecks(Array.isArray(d) ? d : []));
-    fetch(`${API_URL}/api/flashcards/shared?userId=${user.id}`).then(r => r.json()).then(d => setSharedDecks(Array.isArray(d) ? d : []));
+    setDecksLoading(true);
+    Promise.all([
+      fetch(`${API_URL}/api/flashcards/decks/${user.id}`).then(r => r.json()).then(d => setDecks(Array.isArray(d) ? d : [])),
+      fetch(`${API_URL}/api/flashcards/shared?userId=${user.id}`).then(r => r.json()).then(d => setSharedDecks(Array.isArray(d) ? d : []))
+    ]).finally(() => setDecksLoading(false));
   };
 
-  useEffect(() => { if (user) fetchDecks(); }, [user]);
+  useEffect(() => { if (!authLoading && user) fetchDecks(); }, [user, authLoading]);
 
   const openModal = () => { setColor(randomColor()); setShowModal(true); };
 
@@ -113,7 +117,11 @@ export default function Flashcards() {
       </div>
 
       {tab === 'mine' && (
-        decks.length === 0 ? (
+        decksLoading ? (
+          <div className="empty-state" style={{ border: 'none' }}>
+            <div className="spinner" style={{ margin: '0 auto' }} />
+          </div>
+        ) : decks.length === 0 ? (
           <div className="empty-state">
             <div className="empty-icon">
               <svg viewBox="0 0 20 20"><rect x="2" y="4" width="16" height="12" rx="1"/><path d="M6 4V2M14 4V2"/></svg>
