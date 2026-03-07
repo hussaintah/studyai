@@ -19,13 +19,16 @@ router.get('/shared', async (req, res) => {
   const { userId } = req.query;
   const { data, error } = await supabase
     .from('decks')
-    .select('*, flashcards(count), profiles(full_name)')
+    .select('*, flashcards(count)')
     .eq('is_public', true)
     .neq('user_id', userId || '')
     .order('created_at', { ascending: false })
     .limit(50);
-  if (error) return res.status(500).json({ error: error.message });
-  res.json(data);
+  if (error) {
+    console.error('Shared decks error:', error.message);
+    return res.status(500).json({ error: error.message });
+  }
+  res.json(data || []);
 });
 
 // Create deck
