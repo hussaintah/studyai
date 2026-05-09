@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { API_URL } from '../lib/supabase';
+import { fetchWithTimeout } from '../lib/fetchWithTimeout';
 
 const PALETTE = [
   { bg: '#f05a00', label: 'orange' },
@@ -21,6 +22,7 @@ export default function Flashcards() {
   const [decks, setDecks] = useState([]);
   const [sharedDecks, setSharedDecks] = useState([]);
   const [decksLoading, setDecksLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [tab, setTab] = useState('mine');
   const [showModal, setShowModal] = useState(false);
   const [name, setName] = useState('');
@@ -32,13 +34,20 @@ export default function Flashcards() {
 
   const fetchDecks = () => {
     setDecksLoading(true);
+    setError(null);
     Promise.all([
-      fetch(`${API_URL}/api/flashcards/decks/${user.id}`).then(r => r.json()).then(d => setDecks(Array.isArray(d) ? d : [])).catch(e => console.error('My decks fetch error:', e)),
-      fetch(`${API_URL}/api/flashcards/shared?userId=${user.id}`).then(r => r.json()).then(d => {
-        if (d?.error) { console.error('Shared decks error:', d.error); setSharedDecks([]); }
-        else setSharedDecks(Array.isArray(d) ? d : []);
-      }).catch(e => console.error('Shared decks fetch error:', e))
-    ]).finally(() => setDecksLoading(false));
+      fetchWithTimeout(`${API_URL}/api/flashcards/decks/${user.id}`, { timeout: 10000 })
+        .then(r => r.json())
+        .then(d => setDecks(Array.isArray(d) ? d : []))
+        .catch(e => { console.error('My decks fetch error:', e); throw e; }),
+      fetchWithTimeout(`${API_URL}/api/flashcards/shared?userId=${user.id}`, { timeout: 10000 })
+        .then(r => r.json())
+        .then(d => {
+          if (d?.error) { console.error('Shared decks error:', d.error); setSharedDecks([]); }
+          else setSharedDecks(Array.isArray(d) ? d : []);
+        })
+        .catch(e => { console.error('Shared decks fetch error:', e); throw e; })
+    ]).catch(e => setError(e.message || 'Failed to load decks')).finally(() => setDecksLoading(false));
   };
 
   useEffect(() => { if (!authLoading && user) fetchDecks(); }, [user, authLoading]);
@@ -48,28 +57,49 @@ export default function Flashcards() {
   const createDeck = async () => {
     if (!name.trim()) return;
     setLoading(true);
-    await fetch(`${API_URL}/api/flashcards/decks`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ userId: user.id, name, description, color, isPublic })
-    });
-    setName(''); setDescription(''); setColor(randomColor()); setIsPublic(false);
-    setShowModal(false); setLoading(false); fetchDecks();
+    setError(null);
+    try {
+      await fetchWithTimeout(`${API_URL}/api/flashcards/decks`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: user.id, name, description, color, isPublic }),
+        timeout: 10000
+      });
+      setName(''); setDescription(''); setColor(randomColor()); setIsPublic(false);
+      setShowModal(false); fetchDecks();
+    } catch (e) {
+      setError(e.message || 'Failed to create deck');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const deleteDeck = async (e, id) => {
     e.preventDefault();
     if (!window.confirm('Delete this deck and all its cards?')) return;
-    await fetch(`${API_URL}/api/flashcards/decks/${id}`, { method: 'DELETE' });
-    fetchDecks();
+    setError(null);
+    try {
+      await fetchWithTimeout(`${API_URL}/api/flashcards/decks/${id}`, { method: 'DELETE', timeout: 10000 });
+      fetchDecks();
+    } catch (e) {
+      setError(e.message || 'Failed to delete deck');
+    }
   };
 
   const cloneDeck = async (deckId) => {
     setCloning(deckId);
-    await fetch(`${API_URL}/api/flashcards/decks/${deckId}/clone`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ userId: user.id })
-    });
-    setCloning(null); setTab('mine'); fetchDecks();
+    setError(null);
+    try {
+      await fetchWithTimeout(`${API_URL}/api/flashcards/decks/${deckId}/clone`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: user.id }),
+        timeout: 10000
+      });
+      setTab('mine'); fetchDecks();
+    } catch (e) {
+      setError(e.message || 'Failed to clone deck');
+    } finally {
+      setCloning(null);
+    }
   };
 
   const DeckCard = ({ deck, isShared }) => {
@@ -113,6 +143,12 @@ export default function Flashcards() {
         </div>
         <button className="btn-primary" onClick={openModal}>+ New Deck</button>
       </div>
+
+      {error && (
+        <div className="card" style={{ borderLeft: '4px solid #e74c3c', marginBottom: 16 }}>
+          <p style={{ color: '#e74c3c', margin: 0 }}>⚠️ {error}</p>
+        </div>
+      )}
 
       <div className="tabs">
         <div className={`tab${tab === 'mine' ? ' active' : ''}`} onClick={() => setTab('mine')}>My Decks ({decks.length})</div>

@@ -2,12 +2,14 @@ import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { API_URL } from '../lib/supabase';
+import { fetchWithTimeout } from '../lib/fetchWithTimeout';
 
 export default function Dashboard() {
   const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const [decks, setDecks] = useState([]);
   const [decksLoading, setDecksLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   const name = user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'Student';
   const firstName = name.split(' ')[0];
@@ -20,10 +22,14 @@ export default function Dashboard() {
     if (authLoading) return;
     if (!user) return;
     setDecksLoading(true);
-    fetch(`${API_URL}/api/flashcards/decks/${user.id}`)
+    setError(null);
+    fetchWithTimeout(`${API_URL}/api/flashcards/decks/${user.id}`, { timeout: 10000 })
       .then(r => r.json())
       .then(d => setDecks(Array.isArray(d) ? d : []))
-      .catch(() => {})
+      .catch(e => {
+        console.error('Dashboard fetch error:', e);
+        setError(e.message || 'Failed to load dashboard data');
+      })
       .finally(() => setDecksLoading(false));
   }, [user, authLoading]);
 
@@ -31,6 +37,13 @@ export default function Dashboard() {
 
   return (
     <div className="page-content">
+
+      {/* ERROR DISPLAY */}
+      {error && (
+        <div className="card" style={{ borderLeft: '4px solid #e74c3c', marginBottom: 16 }}>
+          <p style={{ color: '#e74c3c', margin: 0 }}>⚠️ {error}</p>
+        </div>
+      )}
 
       {/* HERO */}
       <div className="hero-panel anim d1">

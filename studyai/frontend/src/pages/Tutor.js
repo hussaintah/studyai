@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { API_URL } from '../lib/supabase';
+import { fetchWithTimeout } from '../lib/fetchWithTimeout';
 import ContentInput from '../components/ContentInput';
 
 const STARTERS = [
@@ -27,9 +28,10 @@ export default function Tutor() {
     const newMessages = [...messages, { role: 'user', content: msg }];
     setMessages(newMessages); setIsTyping(true);
     try {
-      const res = await fetch(`${API_URL}/api/ai/tutor`, {
+      const res = await fetchWithTimeout(`${API_URL}/api/ai/tutor`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ messages: newMessages.map(m => ({ role: m.role, content: m.content })), context })
+        body: JSON.stringify({ messages: newMessages.map(m => ({ role: m.role, content: m.content })), context }),
+        timeout: 30000
       });
       const reader = res.body.getReader(); const decoder = new TextDecoder(); let full = '';
       setIsTyping(false);
@@ -42,9 +44,9 @@ export default function Tutor() {
           }
         }
       }
-    } catch {
+    } catch (e) {
       setIsTyping(false);
-      setMessages(prev => [...prev, { role: 'assistant', content: 'Sorry, I\'m having trouble connecting. Try again in a moment.' }]);
+      setMessages(prev => [...prev, { role: 'assistant', content: e.message === 'Request timed out after 30000ms' ? 'Sorry, the request timed out. Please try again.' : 'Sorry, I\'m having trouble connecting. Try again in a moment.' }]);
     }
   };
 
