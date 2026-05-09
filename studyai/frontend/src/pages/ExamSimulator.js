@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
 import { API_URL } from '../lib/supabase';
-import { fetchWithTimeout } from '../lib/fetchWithTimeout';
 import ContentInput from '../components/ContentInput';
 
 // ── PDF export: Question Paper ────────────────────────────────────────────────
@@ -189,35 +188,25 @@ export default function ExamSimulator() {
     setMode('generating');
     try {
       const moduleList = modules.trim() ? modules.split(',').map(m => m.trim()).filter(Boolean) : [];
-      const res = await fetchWithTimeout(`${API_URL}/api/exam/generate`, {
+      const res = await fetch(`${API_URL}/api/exam/generate`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ content, syllabus, duration, modules: moduleList }),
-        timeout: 60000
+        body: JSON.stringify({ content, syllabus, duration, modules: moduleList })
       });
       const data = await res.json();
       if (!data.sections) throw new Error('No sections');
       setExam(data); setAnswers({}); setCurrentSection('A'); setCurrentQIdx(0); setTimeLeft(duration * 60); setMode('exam');
-    } catch (e) {
-      console.error('Generate exam error:', e);
-      alert(e.message || 'Failed to generate exam. Try again.');
-      setMode('setup');
-    }
+    } catch { alert('Failed to generate exam. Try again.'); setMode('setup'); }
   };
 
   const handleSubmit = async () => {
     clearInterval(timerRef.current); setMode('grading');
     try {
-      const res = await fetchWithTimeout(`${API_URL}/api/exam/grade`, {
+      const res = await fetch(`${API_URL}/api/exam/grade`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ questions: exam.questions, answers, sections: exam.sections }),
-        timeout: 60000
+        body: JSON.stringify({ questions: exam.questions, answers, sections: exam.sections })
       });
       setGrading(await res.json()); setMode('results');
-    } catch (e) {
-      console.error('Grade exam error:', e);
-      alert(e.message || 'Failed to grade exam.');
-      setMode('exam');
-    }
+    } catch { setMode('exam'); }
   };
 
   const formatTime = s => {
