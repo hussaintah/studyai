@@ -1,4 +1,5 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
+import { useAuth } from '../hooks/useAuth';
 import { API_URL } from '../lib/supabase';
 import { fetchWithTimeout } from '../lib/fetchWithTimeout';
 import ContentInput from '../components/ContentInput';
@@ -10,45 +11,122 @@ const STARTERS = [
   'Give me 5 key things to remember',
 ];
 
+const INITIAL_MESSAGE = {
+  role: 'assistant',
+  content: "Hi, I'm your AI tutor.
+
+Paste your study material in the panel on the right, then ask me anything. I'll explain concepts, work through problems step by step, and help you prepare for your exam."
+};
+
 export default function Tutor() {
-  const [messages, setMessages] = useState([
-    { role: 'assistant', content: 'Hi, I\'m your AI tutor.\n\nPaste your study material in the panel on the right, then ask me anything. I\'ll explain concepts, work through problems step by step, and help you prepare for your exam.' }
-  ]);
+  const { user } = useAuth();
+  const [messages, setMessages] = useState([INITIAL_MESSAGE]);
   const [input, setInput] = useState('');
   const [context, setContext] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const [showContext, setShowContext] = useState(true);
+  const [loadingHistory, setLoadingHistory] = useState(true);
   const endRef = useRef(null);
 
-  useEffect(() => { endRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages, isTyping]);
+  // Load history on mount
+  useEffect(() => {
+    if (!user) return;
+    fetchWithTimeout(`${API_URL}/api/ai/tutor/history/${user.id}`)
+      .then(r => r.json())
+      .then(d => {
+        if (d.messages && d.messages.length > 0) setMessages(d.messages);
+        if (d.context) setContext(d.context);
+      })
+      .catch(() => {})
+      .finally(() => setLoadingHistory(false));
+  }, [user]);
+
+  // Save history after every exchange
+  const saveHistory = useCallback(async (msgs, ctx) => {
+    if (!user) return;
+    try {
+      await fetchWithTimeout(`${API_URL}/api/ai/tutor/history/${user.id}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ messages: msgs, context: ctx })
+      });
+    } catch {}
+  }, [user]);
+
+  useEffect(() => {
+    endRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages, isTyping]);
 
   const send = async (text) => {
-    const msg = text || input.trim(); if (!msg) return;
+    const msg = text || input.trim();
+    if (!msg) return;
     setInput('');
     const newMessages = [...messages, { role: 'user', content: msg }];
-    setMessages(newMessages); setIsTyping(true);
+    setMessages(newMessages);
+    setIsTyping(true);
+
     try {
       const res = await fetchWithTimeout(`${API_URL}/api/ai/tutor`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ messages: newMessages.map(m => ({ role: m.role, content: m.content })), context }),
-        timeout: 30000
-      });
-      const reader = res.body.getReader(); const decoder = new TextDecoder(); let full = '';
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          messages: newMessages.map(m => ({ role: m.role, content: m.content })),
+          context
+        })
+      }, 30000);
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let full = '';
       setIsTyping(false);
       setMessages(prev => [...prev, { role: 'assistant', content: '' }]);
+
       while (true) {
-        const { value, done } = await reader.read(); if (done) break;
-        for (const line of decoder.decode(value).split('\n')) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        for (const line of decoder.decode(value).split('
+')) {
           if (line.startsWith('data: ')) {
-            try { const d = JSON.parse(line.slice(6)); if (d.text) { full += d.text; setMessages(prev => { const u = [...prev]; u[u.length-1] = { role: 'assistant', content: full }; return u; }); } } catch {}
+            try {
+              const d = JSON.parse(line.slice(6));
+              if (d.text) {
+                full += d.text;
+                setMessages(prev => {
+                  const u = [...prev];
+                  u[u.length - 1] = { role: 'assistant', content: full };
+                  return u;
+                });
+              }
+            } catch {}
           }
         }
       }
-    } catch (e) {
+
+      const finalMessages = [...newMessages, { role: 'assistant', content: full }];
+      await saveHistory(finalMessages, context);
+
+    } catch (err) {
       setIsTyping(false);
-      setMessages(prev => [...prev, { role: 'assistant', content: e.message === 'Request timed out after 30000ms' ? 'Sorry, the request timed out. Please try again.' : 'Sorry, I\'m having trouble connecting. Try again in a moment.' }]);
+      const errMsg = err.message.includes('timed out')
+        ? "Taking too long to respond — the server may be starting up. Try again in a moment."
+        : "Sorry, I'm having trouble connecting. Try again in a moment.";
+      setMessages(prev => [...prev, { role: 'assistant', content: errMsg }]);
     }
   };
+
+  const clearHistory = async () => {
+    setMessages([INITIAL_MESSAGE]);
+    setContext('');
+    await saveHistory([INITIAL_MESSAGE], '');
+  };
+
+  if (loadingHistory) {
+    return (
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '60vh' }}>
+        <p style={{ color: 'var(--text-2)' }}>Loading your session...</p>
+      </div>
+    );
+  }
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
@@ -57,9 +135,14 @@ export default function Tutor() {
           <h1 style={{ fontFamily: 'DM Serif Display, serif', fontSize: '2rem', letterSpacing: '-0.025em', color: 'var(--text)', marginBottom: 4 }}>AI Tutor</h1>
           <p style={{ fontSize: '0.9rem', color: 'var(--text-2)' }}>Ask me anything about your study material</p>
         </div>
-        <button className="btn-secondary btn-sm" onClick={() => setShowContext(c => !c)}>
-          {showContext ? 'Hide' : 'Show'} Notes Panel
-        </button>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button className="btn-secondary btn-sm" onClick={clearHistory}>
+            Clear session
+          </button>
+          <button className="btn-secondary btn-sm" onClick={() => setShowContext(c => !c)}>
+            {showContext ? 'Hide' : 'Show'} Notes Panel
+          </button>
+        </div>
       </div>
 
       <div className="chat-layout" style={{ padding: '0 40px 24px', flex: 1, minHeight: 0 }}>
@@ -91,7 +174,9 @@ export default function Tutor() {
 
           {messages.length <= 1 && (
             <div className="starter-btns">
-              {STARTERS.map(s => <button key={s} className="starter-btn" onClick={() => send(s)}>{s}</button>)}
+              {STARTERS.map(s => (
+                <button key={s} className="starter-btn" onClick={() => send(s)}>{s}</button>
+              ))}
             </div>
           )}
 
@@ -112,7 +197,7 @@ export default function Tutor() {
           </div>
         </div>
 
-        {/* Context panel */}
+        {/* Context panel */}%
         {showContext && (
           <div className="context-panel">
             <div className="context-panel-hdr">

@@ -238,4 +238,37 @@ Be clear, patient, and pedagogical. Break complex ideas into steps. Use examples
   }
 });
 
+// Get tutor history
+router.get('/tutor/history/:userId', async (req, res) => {
+  const { userId } = req.params;
+  const { data, error } = await supabase
+    .from('tutor_history')
+    .select('messages, context')
+    .eq('user_id', userId)
+    .single();
+
+  if (error && error.code !== 'PGRST116') {
+    return res.status(500).json({ error: error.message });
+  }
+  res.json({ messages: data?.messages || [], context: data?.context || '' });
+});
+
+// Save tutor history
+router.post('/tutor/history/:userId', async (req, res) => {
+  const { userId } = req.params;
+  const { messages, context } = req.body;
+
+  const { error } = await supabase
+    .from('tutor_history')
+    .upsert({
+      user_id: userId,
+      messages,
+      context,
+      updated_at: new Date().toISOString()
+    }, { onConflict: 'user_id' });
+
+  if (error) return res.status(500).json({ error: error.message });
+  res.json({ success: true });
+});
+
 module.exports = router;
