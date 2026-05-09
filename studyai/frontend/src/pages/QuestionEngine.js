@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { API_URL } from '../lib/supabase';
+import { fetchWithTimeout } from '../lib/fetchWithTimeout';
 import ContentInput from '../components/ContentInput';
 
 const TYPES = [
@@ -41,13 +42,17 @@ export default function QuestionEngine() {
     if (!content.trim()) return;
     setLoading(true); setQuestions([]); setAnswers({}); setEvaluations({}); setSubmitted({}); setExplanations({}); setAnalysis(null);
     try {
-      const res = await fetch(`${API_URL}/api/ai/generate-questions`, {
+      const res = await fetchWithTimeout(`${API_URL}/api/ai/generate-questions`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ content, enabledTypes, count, difficulty, topics: focusWeak ? weakTopics.map(t => t.topic) : [] })
+        body: JSON.stringify({ content, enabledTypes, count, difficulty, topics: focusWeak ? weakTopics.map(t => t.topic) : [] }),
+        timeout: 30000
       });
       const data = await res.json();
       setQuestions(data.questions || []); setMode('quiz');
-    } catch { alert('Failed to generate questions'); }
+    } catch (e) {
+      console.error('Generate questions error:', e);
+      alert(e.message || 'Failed to generate questions');
+    }
     setLoading(false);
   };
 
@@ -56,37 +61,55 @@ export default function QuestionEngine() {
     setSubmitted(s => ({ ...s, [q.id]: true }));
     setEvalLoading(l => ({ ...l, [q.id]: true }));
     try {
-      const res = await fetch(`${API_URL}/api/ai/evaluate-answer`, {
+      const res = await fetchWithTimeout(`${API_URL}/api/ai/evaluate-answer`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ question: q.question, correctAnswer: q.correct_answer, studentAnswer: answers[q.id], questionType: q.type, topic: q.topic })
+        body: JSON.stringify({ question: q.question, correctAnswer: q.correct_answer, studentAnswer: answers[q.id], questionType: q.type, topic: q.topic }),
+        timeout: 30000
       });
       const ev = await res.json();
       setEvaluations(e => ({ ...e, [q.id]: ev }));
-    } catch {}
+    } catch (e) {
+      console.error('Submit answer error:', e);
+    }
     setEvalLoading(l => ({ ...l, [q.id]: false }));
   };
 
   const explainConcept = async (q) => {
     setExplainLoading(l => ({ ...l, [q.id]: true })); setExplanations(e => ({ ...e, [q.id]: '' }));
-    const res = await fetch(`${API_URL}/api/ai/explain`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ question: q.question, correctAnswer: q.correct_answer, studentAnswer: answers[q.id], topic: q.topic, content })
-    });
-    const reader = res.body.getReader(); const decoder = new TextDecoder(); let full = '';
-    setExplainLoading(l => ({ ...l, [q.id]: false }));
-    while (true) {
-      const { value, done } = await reader.read(); if (done) break;
-      for (const line of decoder.decode(value).split('\n')) {
-        if (line.startsWith('data: ')) { try { const d = JSON.parse(line.slice(6)); if (d.text) { full += d.text; setExplanations(e => ({ ...e, [q.id]: full })); } } catch {} }
+    try {
+      const res = await fetchWithTimeout(`${API_URL}/api/ai/explain`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ question: q.question, correctAnswer: q.correct_answer, studentAnswer: answers[q.id], topic: q.topic, content }),
+        timeout: 30000
+      });
+      const reader = res.body.getReader(); const decoder = new TextDecoder(); let full = '';
+      setExplainLoading(l => ({ ...l, [q.id]: false }));
+      while (true) {
+        const { value, done } = await reader.read(); if (done) break;
+        for (const line of decoder.decode(value).split('\n')) {
+          if (line.startsWith('data: ')) { try { const d = JSON.parse(line.slice(6)); if (d.text) { full += d.text; setExplanations(e => ({ ...e, [q.id]: full })); } } catch {} }
+        }
       }
+    } catch (e) {
+      console.error('Explain concept error:', e);
+      setExplainLoading(l => ({ ...l, [q.id]: false }));
     }
   };
 
   const analyzeWeaknesses = async () => {
     setAnalysisLoading(true);
-    const results = questions.map(q => ({ question: q.question, topic: q.topic, score: evaluations[q.id]?.score || 0, is_correct: evaluations[q.id]?.is_correct || false, key_concepts_missed: evaluations[q.id]?.key_concepts_missed || [] }));
-    const res = await fetch(`${API_URL}/api/ai/analyze-weaknesses`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ results }) });
-    const data = await res.json(); setAnalysis(data); setWeakTopics(data.weakTopics || []); setAnalysisLoading(false);
+    try {
+      const results = questions.map(q => ({ question: q.question, topic: q.topic, score: evaluations[q.id]?.score || 0, is_correct: evaluations[q.id]?.is_correct || false, key_concepts_missed: evaluations[q.id]?.key_concepts_missed || [] }));
+      const res = await fetchWithTimeout(`${API_URL}/api/ai/analyze-weaknesses`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ results }),
+        timeout: 30000
+      });
+      const data = await res.json(); setAnalysis(data); setWeakTopics(data.weakTopics || []);
+    } catch (e) {
+      console.error('Analyze weaknesses error:', e);
+    }
+    setAnalysisLoading(false);
   };
 
   const answeredAll = questions.length > 0 && questions.every(q => submitted[q.id] && !evalLoading[q.id]);

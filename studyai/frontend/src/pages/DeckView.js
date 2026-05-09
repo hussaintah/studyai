@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { API_URL } from '../lib/supabase';
+import { fetchWithTimeout } from '../lib/fetchWithTimeout';
 import ContentInput from '../components/ContentInput';
 
 const RATINGS = [
@@ -25,34 +26,71 @@ export default function DeckView() {
   const [aiCount, setAiCount] = useState(10);
   const [aiLoading, setAiLoading] = useState(false);
 
-  const fetchCards = async () => { const res = await fetch(`${API_URL}/api/flashcards/${deckId}`); setCards(await res.json()); };
+  const fetchCards = async () => {
+    try {
+      const res = await fetchWithTimeout(`${API_URL}/api/flashcards/${deckId}`, { timeout: 10000 });
+      setCards(await res.json());
+    } catch (e) {
+      console.error('Fetch cards error:', e);
+    }
+  };
   useEffect(() => { fetchCards(); }, [deckId]);
 
   const dueCards = cards.filter(c => new Date(c.next_review) <= new Date());
 
   const addCard = async () => {
     if (!front.trim() || !back.trim()) return;
-    await fetch(`${API_URL}/api/flashcards`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ deckId, userId: user.id, front, back }) });
-    setFront(''); setBack(''); fetchCards();
+    try {
+      await fetchWithTimeout(`${API_URL}/api/flashcards`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ deckId, userId: user.id, front, back }),
+        timeout: 10000
+      });
+      setFront(''); setBack(''); fetchCards();
+    } catch (e) {
+      console.error('Add card error:', e);
+    }
   };
 
   const generateAI = async () => {
     if (!aiContent.trim()) return;
     setAiLoading(true);
-    const res = await fetch(`${API_URL}/api/ai/generate-flashcards`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ content: aiContent, count: aiCount }) });
-    const data = await res.json();
-    if (data.flashcards) {
-      await fetch(`${API_URL}/api/flashcards/bulk`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ deckId, userId: user.id, cards: data.flashcards }) });
-      fetchCards(); setAiContent(''); setMode('list');
+    try {
+      const res = await fetchWithTimeout(`${API_URL}/api/ai/generate-flashcards`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content: aiContent, count: aiCount }),
+        timeout: 30000
+      });
+      const data = await res.json();
+      if (data.flashcards) {
+        await fetchWithTimeout(`${API_URL}/api/flashcards/bulk`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ deckId, userId: user.id, cards: data.flashcards }),
+          timeout: 10000
+        });
+        fetchCards(); setAiContent(''); setMode('list');
+      }
+    } catch (e) {
+      console.error('AI generation error:', e);
+      alert(e.message || 'Failed to generate flashcards');
+    } finally {
+      setAiLoading(false);
     }
-    setAiLoading(false);
   };
 
   const rateCard = async (quality) => {
     const card = dueCards[studyIdx];
-    await fetch(`${API_URL}/api/flashcards/${card.id}/review`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ quality }) });
-    setResults(r => [...r, { quality }]); setFlipped(false);
-    setTimeout(() => { if (studyIdx + 1 >= dueCards.length) setMode('done'); else setStudyIdx(i => i + 1); }, 80);
+    try {
+      await fetchWithTimeout(`${API_URL}/api/flashcards/${card.id}/review`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ quality }),
+        timeout: 10000
+      });
+      setResults(r => [...r, { quality }]); setFlipped(false);
+      setTimeout(() => { if (studyIdx + 1 >= dueCards.length) setMode('done'); else setStudyIdx(i => i + 1); }, 80);
+    } catch (e) {
+      console.error('Rate card error:', e);
+    }
   };
 
   const card = dueCards[studyIdx];
