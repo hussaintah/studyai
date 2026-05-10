@@ -13,9 +13,9 @@ const STARTERS = [
 
 const INITIAL_MESSAGE = {
   role: 'assistant',
-  content: "Hi, I'm your AI tutor.
+  content: `Hi, I'm your AI tutor.
 
-Paste your study material in the panel on the right, then ask me anything. I'll explain concepts, work through problems step by step, and help you prepare for your exam."
+Paste your study material in the panel on the right, then ask me anything. I'll explain concepts, work through problems step by step, and help you prepare for your exam.`
 };
 
 export default function Tutor() {
@@ -84,8 +84,7 @@ export default function Tutor() {
       while (true) {
         const { value, done } = await reader.read();
         if (done) break;
-        for (const line of decoder.decode(value).split('
-')) {
+        for (const line of decoder.decode(value).split('\n')) {
           if (line.startsWith('data: ')) {
             try {
               const d = JSON.parse(line.slice(6));
@@ -197,7 +196,7 @@ export default function Tutor() {
           </div>
         </div>
 
-        {/* Context panel */}%
+        {/* Context panel */}
         {showContext && (
           <div className="context-panel">
             <div className="context-panel-hdr">
