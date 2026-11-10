@@ -4,7 +4,7 @@ const Groq = require('groq-sdk');
 const { createClient } = require('@supabase/supabase-js');
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
-const MODEL = 'llama-3.3-70b-versatile';
+const MODEL = 'openai/gpt-oss-120b';
 
 // Generate questions — supports enabledTypes array (mcq, short, truefalse, numerical)
 router.post('/generate-questions', async (req, res) => {
